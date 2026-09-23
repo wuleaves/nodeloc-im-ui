@@ -2,7 +2,7 @@
 // @name         NodeLoc · IM 外观（钉钉 / 飞书 / 企业微信）
 // @namespace    https://www.nodeloc.com/
 // @author       czm15053, NodeLoc adaptation
-// @version      0.6.3
+// @version      0.6.4
 // @description  NodeLoc 三栏 IM 外观：节点/主题列表、帖子流、回复、搜索、用户与通知，支持三套皮肤和明暗主题。
 // @match        https://www.nodeloc.com/*
 // @noframes
@@ -3403,6 +3403,8 @@ width: 15px; height: 15px;
 .im-msg-tool:hover {
 background: var(--im-hover); color: var(--im-accent);
 }
+.im-msg-tool.im-msg-delete:hover { background: rgba(245, 74, 69, .10); color: var(--im-danger, #f54a45); }
+.im-msg-deleting { opacity: .48; pointer-events: none; transition: opacity .16s ease; }
 
 .im-msg-tool.liked {
 color: var(--im-accent);
@@ -7966,6 +7968,8 @@ html.im-theme {
     // features：轻提示
     toggleLike: null,
     // features：点赞
+    deletePost: null,
+    // features：删除自己的帖子
     openImageModal: null,
     // features：沉浸灯箱
     openBoostComposer: null,
@@ -9708,7 +9712,7 @@ html.im-theme {
   }, true);
   function bindChatPanelEvents(panel) {
     panel.addEventListener("click", (e) => {
-      var _a2, _b2, _c, _d;
+      var _a2, _b2, _c, _d, _e;
       if (e.target.closest(".im-chat-metrics")) {
         e.preventDefault();
         e.stopPropagation();
@@ -9858,6 +9862,10 @@ html.im-theme {
         e.preventDefault();
         e.stopPropagation();
         (_d = chatHooks.toggleBookmark) == null ? void 0 : _d.call(chatHooks, Number(msg.dataset.postId), toolBtn);
+      } else if (toolBtn.dataset.action === "delete") {
+        e.preventDefault();
+        e.stopPropagation();
+        (_e = chatHooks.deletePost) == null ? void 0 : _e.call(chatHooks, Number(msg.dataset.postId), toolBtn);
       } else if (NATIVE_ACTION_SEL[toolBtn.dataset.action]) {
         e.preventDefault();
         e.stopPropagation();
@@ -10216,6 +10224,7 @@ html.im-theme {
       <span class="im-like-count">${likeCount > 0 ? likeCount : ""}</span>
     </span>`;
     const pluginExtras = renderNodeLocPostExtras(post);
+    const canDelete = !!post.id && me && (post.can_delete !== false || Number(post.post_number) > 1);
     return `
     <div class="im-msg im-msg-${side}" data-post-number="${post.post_number}"${post.id ? ` data-post-id="${post.id}"` : ""}${me ? ' data-mine="1"' : ""} data-username="${escapeHtml(post.username || "")}" data-bookmarked="${post.bookmarked ? "1" : "0"}">
       <span class="im-msg-avatar" style="background:${avatarBg}">${avatar}</span>
@@ -10236,6 +10245,7 @@ html.im-theme {
           <button class="im-msg-tool" data-action="reply" title="回复">${ICONS.reply}</button>
           <button class="im-msg-tool" data-action="copy-link" title="复制链接">${ICONS.link}</button>
           <button class="im-msg-tool${post.bookmarked ? " bookmarked" : ""}" data-action="bookmark" title="${post.bookmarked ? "取消收藏" : "收藏"}">${post.bookmarked ? ICONS.bookmarkFill || ICONS.bookmark : ICONS.bookmark}</button>
+          ${canDelete ? `<button class="im-msg-tool im-msg-delete" data-action="delete" title="删除">${ICONS.trash}</button>` : ""}
           <button class="im-msg-tool" data-action="flag" title="举报">${ICONS.flag}</button>
         </div>
       </div>
@@ -16157,7 +16167,46 @@ ${item.label}`;
       showImToast(`收藏操作失败：${err.message || "未知错误"}`, triggerEl);
     }
   }
-  Object.assign(chatHooks, { toast: showImToast, toggleLike, toggleBookmark, cantUndoText: getNativeCantUndoText });
+  async function deletePost(postId, triggerEl) {
+    var _a2, _b2, _c;
+    const msg = (_a2 = triggerEl == null ? void 0 : triggerEl.closest) == null ? void 0 : _a2.call(triggerEl, ".im-msg");
+    const postNumber = Number((msg == null ? void 0 : msg.dataset.postNumber) || 0);
+    if (!postId || !msg || msg.dataset.mine !== "1") return;
+    const wording = postNumber === 1 ? "删除首帖会同时删除整个话题，确定继续吗？" : `确定删除第 #${postNumber} 条回复吗？此操作将同步到 NodeLoc。`;
+    if (!window.confirm(wording)) return;
+    triggerEl.disabled = true;
+    msg.classList.add("im-msg-deleting");
+    try {
+      const response = await fetch(`/posts/${Number(postId)}.json`, {
+        method: "DELETE",
+        credentials: "same-origin",
+        headers: {
+          "X-CSRF-Token": csrfToken(),
+          "X-Requested-With": "XMLHttpRequest",
+          "Accept": "application/json"
+        }
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || ((_b2 = payload.errors) == null ? void 0 : _b2.length) || payload.error) {
+        const message = ((_c = payload.errors) == null ? void 0 : _c.join("；")) || payload.error || payload.message || `HTTP ${response.status}`;
+        throw new Error(message);
+      }
+      topicPostsMap.delete(postNumber);
+      chatState.totalPosts = Math.max(0, Number(chatState.totalPosts || 0) - 1);
+      msg.remove();
+      const metrics = document.querySelector(".im-chat-metrics");
+      if (metrics && chatState.totalPosts) {
+        const floor = Math.min(Number(chatState.renderedLastNumber || chatState.totalPosts), chatState.totalPosts);
+        metrics.innerHTML = `${ICONS.chat}${floor}<span class="im-metrics-sep">/</span>${chatState.totalPosts}`;
+      }
+      showImToast(postNumber === 1 ? "话题已删除" : "回复已删除", triggerEl);
+    } catch (error) {
+      msg.classList.remove("im-msg-deleting");
+      triggerEl.disabled = false;
+      showImToast(`删除失败：${error.message || "未知错误"}`, triggerEl);
+    }
+  }
+  Object.assign(chatHooks, { toast: showImToast, toggleLike, toggleBookmark, deletePost, cantUndoText: getNativeCantUndoText });
   let activeImgModal = null;
   function openImImageModal(src, _triggerImg) {
     if (!src) return;
@@ -17589,7 +17638,7 @@ ${item.label}`;
       }
     }
     function bootstrap() {
-      console.info(`[nodeloc-im] v${"0.6.3"} loaded, skin=${SKIN_ID}`);
+      console.info(`[nodeloc-im] v${"0.6.4"} loaded, skin=${SKIN_ID}`);
       if (!document.documentElement) {
         setTimeout(bootstrap, 0);
         return;

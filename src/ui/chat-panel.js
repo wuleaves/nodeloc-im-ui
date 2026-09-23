@@ -416,6 +416,10 @@ function bindChatPanelEvents(panel) {
       e.preventDefault();
       e.stopPropagation();
       chatHooks.toggleBookmark?.(Number(msg.dataset.postId), toolBtn);
+    } else if (toolBtn.dataset.action === "delete") {
+      e.preventDefault();
+      e.stopPropagation();
+      chatHooks.deletePost?.(Number(msg.dataset.postId), toolBtn);
     } else if (NATIVE_ACTION_SEL[toolBtn.dataset.action]) {
       // 回应摘要 / 复制链接 / 书签 / 举报：转发点击到原生楼层按钮，行为与原站一致
       e.preventDefault();
@@ -798,6 +802,7 @@ function bubbleHtml(post, myName) {
     </span>`;
 
   const pluginExtras = renderNodeLocPostExtras(post);
+  const canDelete = !!post.id && me && (post.can_delete !== false || Number(post.post_number) > 1);
   return `
     <div class="im-msg im-msg-${side}" data-post-number="${post.post_number}"${post.id ? ` data-post-id="${post.id}"` : ""}${me ? ' data-mine="1"' : ""} data-username="${escapeHtml(post.username || "")}" data-bookmarked="${post.bookmarked ? "1" : "0"}">
       <span class="im-msg-avatar" style="background:${avatarBg}">${avatar}</span>
@@ -818,6 +823,7 @@ function bubbleHtml(post, myName) {
           <button class="im-msg-tool" data-action="reply" title="回复">${ICONS.reply}</button>
           <button class="im-msg-tool" data-action="copy-link" title="复制链接">${ICONS.link}</button>
           <button class="im-msg-tool${post.bookmarked ? " bookmarked" : ""}" data-action="bookmark" title="${post.bookmarked ? "取消收藏" : "收藏"}">${post.bookmarked ? (ICONS.bookmarkFill || ICONS.bookmark) : ICONS.bookmark}</button>
+          ${canDelete ? `<button class="im-msg-tool im-msg-delete" data-action="delete" title="删除">${ICONS.trash}</button>` : ""}
           <button class="im-msg-tool" data-action="flag" title="举报">${ICONS.flag}</button>
         </div>
       </div>

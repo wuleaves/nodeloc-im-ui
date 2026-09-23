@@ -5,6 +5,7 @@ export const chatHooks = {
   replyToPost: null,         // composer：回复某楼
   toast: null,               // features：轻提示
   toggleLike: null,          // features：点赞
+  deletePost: null,          // features：删除自己的帖子
   openImageModal: null,      // features：沉浸灯箱
   openBoostComposer: null,   // features：小火箭输入条
   deleteBoost: null,         // features：删除小火箭

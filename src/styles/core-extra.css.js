@@ -280,6 +280,8 @@ width: 15px; height: 15px;
 .im-msg-tool:hover {
 background: var(--im-hover); color: var(--im-accent);
 }
+.im-msg-tool.im-msg-delete:hover { background: rgba(245, 74, 69, .10); color: var(--im-danger, #f54a45); }
+.im-msg-deleting { opacity: .48; pointer-events: none; transition: opacity .16s ease; }
 
 .im-msg-tool.liked {
 color: var(--im-accent);

@@ -2,6 +2,7 @@
 import { csrfToken } from "../bridge/api.js";
 import { pg } from "../bridge/page.js";
 import { ICONS } from "../config/icons.js";
+import { chatState, topicPostsMap } from "../state/chat-state.js";
 import { likedPosts } from "./liked-posts.js";
 import { chatHooks } from "../ui/hooks.js";
 
@@ -244,5 +245,49 @@ export async function toggleBookmark(postId, triggerEl) {
   }
 }
 
+/* ============================== 删除自己的回复 ============================== */
+
+export async function deletePost(postId, triggerEl) {
+  const msg = triggerEl?.closest?.(".im-msg");
+  const postNumber = Number(msg?.dataset.postNumber || 0);
+  if (!postId || !msg || msg.dataset.mine !== "1") return;
+  const wording = postNumber === 1
+    ? "删除首帖会同时删除整个话题，确定继续吗？"
+    : `确定删除第 #${postNumber} 条回复吗？此操作将同步到 NodeLoc。`;
+  if (!window.confirm(wording)) return;
+
+  triggerEl.disabled = true;
+  msg.classList.add("im-msg-deleting");
+  try {
+    const response = await fetch(`/posts/${Number(postId)}.json`, {
+      method: "DELETE",
+      credentials: "same-origin",
+      headers: {
+        "X-CSRF-Token": csrfToken(),
+        "X-Requested-With": "XMLHttpRequest",
+        "Accept": "application/json"
+      }
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || payload.errors?.length || payload.error) {
+      const message = payload.errors?.join("；") || payload.error || payload.message || `HTTP ${response.status}`;
+      throw new Error(message);
+    }
+    topicPostsMap.delete(postNumber);
+    chatState.totalPosts = Math.max(0, Number(chatState.totalPosts || 0) - 1);
+    msg.remove();
+    const metrics = document.querySelector(".im-chat-metrics");
+    if (metrics && chatState.totalPosts) {
+      const floor = Math.min(Number(chatState.renderedLastNumber || chatState.totalPosts), chatState.totalPosts);
+      metrics.innerHTML = `${ICONS.chat}${floor}<span class="im-metrics-sep">/</span>${chatState.totalPosts}`;
+    }
+    showImToast(postNumber === 1 ? "话题已删除" : "回复已删除", triggerEl);
+  } catch (error) {
+    msg.classList.remove("im-msg-deleting");
+    triggerEl.disabled = false;
+    showImToast(`删除失败：${error.message || "未知错误"}`, triggerEl);
+  }
+}
+
 // chatHooks 自注册（入口 import 即生效）
-Object.assign(chatHooks, { toast: showImToast, toggleLike, toggleBookmark, cantUndoText: getNativeCantUndoText });
+Object.assign(chatHooks, { toast: showImToast, toggleLike, toggleBookmark, deletePost, cantUndoText: getNativeCantUndoText });
