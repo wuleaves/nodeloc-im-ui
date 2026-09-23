@@ -2741,9 +2741,15 @@ color: #7AA3D6;
     }
     .__ROOT_CLASS__ .im-plugin-native:hover { border-color: var(--im-accent); }
     .__ROOT_CLASS__ .im-reward-people { margin-top: 9px; }
+    .__ROOT_CLASS__ .im-reward-card {
+      width: min(100%, 470px);
+      box-sizing: border-box;
+    }
+    .__ROOT_CLASS__ .im-reward-card .im-plugin-head strong { font-size: 15px; }
+    .__ROOT_CLASS__ .im-reward-card .im-plugin-head > span { white-space: nowrap; }
     .__ROOT_CLASS__ .im-reward-people a,
     .__ROOT_CLASS__ .im-reward-people > span {
-      width: 27px; height: 27px; border-radius: 50%; overflow: hidden;
+      width: 32px; height: 32px; border-radius: 50%; overflow: hidden;
       display: inline-flex; align-items: center; justify-content: center;
       background: var(--im-hover); color: var(--im-text-2); font-size: 11px;
     }

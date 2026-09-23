@@ -399,6 +399,17 @@ function bindChatPanelEvents(panel) {
     if (nativePlugin && panel.contains(nativePlugin)) {
       e.preventDefault();
       e.stopPropagation();
+      if (nativePlugin.dataset.imPluginAction === "reward") {
+        const postNumber = Number(nativePlugin.dataset.postNumber || nativePlugin.closest(".im-msg")?.dataset.postNumber);
+        const nativePost = document.querySelector(
+          `article[data-post-number="${postNumber}"], .topic-post[data-post-number="${postNumber}"]`
+        );
+        const rewardTrigger = nativePost?.querySelector(".discourse-rewards-add-trigger");
+        if (rewardTrigger) {
+          rewardTrigger.click();
+          return;
+        }
+      }
       setViewMode("native");
       location.reload();
       return;

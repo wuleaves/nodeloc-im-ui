@@ -12,8 +12,8 @@ function formatDate(value) {
   catch { return String(value); }
 }
 
-function nativeAction(label = "在原生视图中操作") {
-  return `<button type="button" class="im-plugin-native" data-im-native-plugin="1">${escapeHtml(label)}</button>`;
+function nativeAction(label = "在原生视图中操作", action = "native", postNumber = 0) {
+  return `<button type="button" class="im-plugin-native" data-im-native-plugin="1" data-im-plugin-action="${escapeHtml(action)}" data-post-number="${Number(postNumber) || 0}">${escapeHtml(label)}</button>`;
 }
 
 function renderReactions(post) {
@@ -46,7 +46,7 @@ function renderRewards(post) {
   return `<section class="im-plugin-card im-reward-card">
     <div class="im-plugin-head"><strong>能量奖励</strong><span>${rewards.length} 人 · ${total} NL</span></div>
     <div class="im-reward-people">${people}${rewards.length > 8 ? `<span>+${rewards.length - 8}</span>` : ""}</div>
-    ${nativeAction("查看或赠送能量")}
+    ${nativeAction("查看或赠送能量", "reward", post.post_number)}
   </section>`;
 }
 

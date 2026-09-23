@@ -2,7 +2,7 @@
 // @name         NodeLoc · IM 外观（钉钉 / 飞书 / 企业微信）
 // @namespace    https://www.nodeloc.com/
 // @author       czm15053, NodeLoc adaptation
-// @version      0.5.1
+// @version      0.5.2
 // @description  NodeLoc 三栏 IM 外观：节点/主题列表、帖子流、回复、搜索、用户与通知，支持三套皮肤和明暗主题。
 // @match        https://www.nodeloc.com/*
 // @noframes
@@ -5864,9 +5864,15 @@ color: #7AA3D6;
     }
     .__ROOT_CLASS__ .im-plugin-native:hover { border-color: var(--im-accent); }
     .__ROOT_CLASS__ .im-reward-people { margin-top: 9px; }
+    .__ROOT_CLASS__ .im-reward-card {
+      width: min(100%, 470px);
+      box-sizing: border-box;
+    }
+    .__ROOT_CLASS__ .im-reward-card .im-plugin-head strong { font-size: 15px; }
+    .__ROOT_CLASS__ .im-reward-card .im-plugin-head > span { white-space: nowrap; }
     .__ROOT_CLASS__ .im-reward-people a,
     .__ROOT_CLASS__ .im-reward-people > span {
-      width: 27px; height: 27px; border-radius: 50%; overflow: hidden;
+      width: 32px; height: 32px; border-radius: 50%; overflow: hidden;
       display: inline-flex; align-items: center; justify-content: center;
       background: var(--im-hover); color: var(--im-text-2); font-size: 11px;
     }
@@ -9236,8 +9242,8 @@ html.im-theme {
       return String(value);
     }
   }
-  function nativeAction(label = "在原生视图中操作") {
-    return `<button type="button" class="im-plugin-native" data-im-native-plugin="1">${escapeHtml(label)}</button>`;
+  function nativeAction(label = "在原生视图中操作", action = "native", postNumber = 0) {
+    return `<button type="button" class="im-plugin-native" data-im-native-plugin="1" data-im-plugin-action="${escapeHtml(action)}" data-post-number="${Number(postNumber) || 0}">${escapeHtml(label)}</button>`;
   }
   function renderReactions(post) {
     const reactions = Array.isArray(post.reactions) ? post.reactions.filter((r) => Number(r.count) > 0) : [];
@@ -9265,7 +9271,7 @@ html.im-theme {
     return `<section class="im-plugin-card im-reward-card">
     <div class="im-plugin-head"><strong>能量奖励</strong><span>${rewards.length} 人 · ${total} NL</span></div>
     <div class="im-reward-people">${people}${rewards.length > 8 ? `<span>+${rewards.length - 8}</span>` : ""}</div>
-    ${nativeAction("查看或赠送能量")}
+    ${nativeAction("查看或赠送能量", "reward", post.post_number)}
   </section>`;
   }
   function renderLottery(post) {
@@ -9656,10 +9662,22 @@ html.im-theme {
       }
     });
     panel.addEventListener("click", (e) => {
+      var _a2;
       const nativePlugin = e.target.closest("[data-im-native-plugin]");
       if (nativePlugin && panel.contains(nativePlugin)) {
         e.preventDefault();
         e.stopPropagation();
+        if (nativePlugin.dataset.imPluginAction === "reward") {
+          const postNumber = Number(nativePlugin.dataset.postNumber || ((_a2 = nativePlugin.closest(".im-msg")) == null ? void 0 : _a2.dataset.postNumber));
+          const nativePost = document.querySelector(
+            `article[data-post-number="${postNumber}"], .topic-post[data-post-number="${postNumber}"]`
+          );
+          const rewardTrigger = nativePost == null ? void 0 : nativePost.querySelector(".discourse-rewards-add-trigger");
+          if (rewardTrigger) {
+            rewardTrigger.click();
+            return;
+          }
+        }
         setViewMode("native");
         location.reload();
         return;
@@ -17415,7 +17433,7 @@ ${item.label}`;
       }
     }
     function bootstrap() {
-      console.info(`[nodeloc-im] v${"0.5.1"} loaded, skin=${SKIN_ID}`);
+      console.info(`[nodeloc-im] v${"0.5.2"} loaded, skin=${SKIN_ID}`);
       if (!document.documentElement) {
         setTimeout(bootstrap, 0);
         return;
