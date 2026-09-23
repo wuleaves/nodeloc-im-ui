@@ -2724,8 +2724,68 @@ color: #7AA3D6;
     .__ROOT_CLASS__ .im-plugin-head > span,
     .__ROOT_CLASS__ .im-plugin-meta,
     .__ROOT_CLASS__ .im-plugin-winners { color: var(--im-text-3); font-size: 12px; }
-    .__ROOT_CLASS__ .im-lottery-card { border-color: color-mix(in srgb, #f59e0b 45%, var(--im-border)); }
+    .__ROOT_CLASS__ .im-lottery-card {
+      width: min(100%, 680px);
+      padding: 0;
+      overflow: hidden;
+      border-color: color-mix(in srgb, #8b5cf6 45%, var(--im-border));
+      background: linear-gradient(145deg, color-mix(in srgb, #4c1d95 92%, var(--im-panel)), color-mix(in srgb, #18043d 94%, var(--im-panel)));
+      color: #f8f5ff;
+    }
     .__ROOT_CLASS__ .im-lottery-card .status { color: #b76b00; font-weight: 600; }
+    .__ROOT_CLASS__ .im-lottery-widget { position: relative; padding: 14px; }
+    .__ROOT_CLASS__ .im-lottery-widget .lottery-widget__bg-icons { display: none; }
+    .__ROOT_CLASS__ .im-lottery-widget .lottery-widget__header,
+    .__ROOT_CLASS__ .im-lottery-widget .lottery-widget__meta,
+    .__ROOT_CLASS__ .im-lottery-widget .lottery-widget__conditions,
+    .__ROOT_CLASS__ .im-lottery-widget .lottery-widget__countdown,
+    .__ROOT_CLASS__ .im-lottery-widget .lottery-participants-list {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .__ROOT_CLASS__ .im-lottery-widget .lottery-widget__header {
+      gap: 9px; padding-bottom: 11px; border-bottom: 1px solid rgba(255,255,255,.14);
+    }
+    .__ROOT_CLASS__ .im-lottery-widget .lottery-widget__title { flex: 1; min-width: 0; font-weight: 700; font-size: 15px; }
+    .__ROOT_CLASS__ .im-lottery-widget .lottery-status-badge {
+      padding: 3px 8px; border-radius: 6px; background: #16a34a; color: #fff; font-size: 11px; font-weight: 700;
+    }
+    .__ROOT_CLASS__ .im-lottery-widget .lottery-widget__meta { padding: 10px 0 7px; color: rgba(255,255,255,.72); font-size: 11px; }
+    .__ROOT_CLASS__ .im-lottery-widget .lottery-meta-item,
+    .__ROOT_CLASS__ .im-lottery-widget .lottery-condition-item { display: inline-flex; align-items: center; gap: 4px; }
+    .__ROOT_CLASS__ .im-lottery-widget .lottery-widget__conditions { padding-bottom: 9px; }
+    .__ROOT_CLASS__ .im-lottery-widget .lottery-condition-item {
+      padding: 3px 7px; border: 1px solid rgba(255,255,255,.16); border-radius: 999px; color: rgba(255,255,255,.78); font-size: 11px;
+    }
+    .__ROOT_CLASS__ .im-lottery-widget h4 { margin: 8px 0; color: #fff; font-size: 12px; }
+    .__ROOT_CLASS__ .im-lottery-widget .lottery-widget__prizes ul { margin: 0; padding: 0; list-style: none; }
+    .__ROOT_CLASS__ .im-lottery-widget .lottery-widget__prizes li {
+      display: flex; justify-content: space-between; gap: 16px; padding: 3px 0; color: rgba(255,255,255,.86); font-size: 12px;
+    }
+    .__ROOT_CLASS__ .im-lottery-widget .lottery-widget__countdown { justify-content: center; margin: 12px 0; }
+    .__ROOT_CLASS__ .im-lottery-widget .lottery-countdown-segment {
+      min-width: 46px; padding: 7px 5px; border: 1px solid rgba(255,255,255,.14); border-radius: 7px;
+      background: rgba(255,255,255,.09); text-align: center;
+    }
+    .__ROOT_CLASS__ .im-lottery-widget .lottery-countdown-value { display: block; font-size: 18px; font-weight: 750; }
+    .__ROOT_CLASS__ .im-lottery-widget .lottery-countdown-label { display: block; margin-top: 2px; color: rgba(255,255,255,.58); font-size: 9px; }
+    .__ROOT_CLASS__ .im-lottery-widget .lottery-countdown-sep { color: rgba(255,255,255,.5); }
+    .__ROOT_CLASS__ .im-lottery-widget .lottery-participants-list { max-height: 112px; overflow: auto; align-items: flex-start; }
+    .__ROOT_CLASS__ .im-lottery-widget .lottery-participant-item {
+      position: relative; display: inline-flex; align-items: center; color: #fff; text-decoration: none;
+    }
+    .__ROOT_CLASS__ .im-lottery-widget .participant-avatar,
+    .__ROOT_CLASS__ .im-lottery-widget .participant-avatar img { display: block; width: 25px; height: 25px; border-radius: 50%; object-fit: cover; }
+    .__ROOT_CLASS__ .im-lottery-widget .participant-tickets {
+      margin-left: -3px; padding: 1px 4px; border-radius: 999px; background: rgba(255,255,255,.15); font-size: 9px;
+    }
+    .__ROOT_CLASS__ .im-lottery-widget .lottery-buy-btn {
+      margin-top: 12px; padding: 7px 12px; border: 0; border-radius: 8px; background: #d946ef; color: #fff; cursor: pointer; font: inherit; font-size: 12px; font-weight: 650;
+    }
+    .__ROOT_CLASS__ .im-lottery-widget .lottery-buy-btn:hover { filter: brightness(1.08); }
+    .__ROOT_CLASS__ .im-lottery-widget svg { width: 1em; height: 1em; fill: currentColor; }
     .__ROOT_CLASS__ .im-plugin-prizes { margin: 10px 0; padding: 0; list-style: none; }
     .__ROOT_CLASS__ .im-plugin-prizes li { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; }
     .__ROOT_CLASS__ .im-plugin-winners a { color: var(--im-accent); }

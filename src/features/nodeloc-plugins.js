@@ -77,7 +77,7 @@ function renderLottery(post) {
     </div>
     ${levels ? `<ul class="im-plugin-prizes">${levels}</ul>` : ""}
     ${winners ? `<div class="im-plugin-winners"><b>获奖者</b>${winners}</div>` : ""}
-    ${nativeAction(lottery.status === "active" ? "购买奖券 / 管理抽奖" : "查看完整抽奖")}
+    ${nativeAction(["active", "open"].includes(lottery.status) ? "参与抽奖" : "查看完整抽奖", "lottery", post.post_number)}
   </section>`;
 }
 

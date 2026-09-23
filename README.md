@@ -24,6 +24,7 @@
 - 完整加载 NodeLoc `site.json` 中的顶级分类与约 200 个节点
 - NodeLoc reactions、vote、reward、lottery、red-envelope 字段的只读兼容展示
 - 能量奖励在 IM 气泡内显示完整卡片，并可直接唤起 NodeLoc 原生赠送弹层；其余站点私有写操作提供“原生视图”入口
+- 抽奖帖在 IM 气泡内保留状态、规则、奖品、倒计时及参与者，并可直接唤起原生购券流程
 - `/apps`、`/nodes`、管理页等非标准 Topic List 页面保留原生界面
 
 ## 安装

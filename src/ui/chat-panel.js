@@ -28,7 +28,33 @@ import { renderNodeLocPostExtras } from "../features/nodeloc-plugins.js";
 function afterChatPaint(body) {
   chatHooks.enhancePolls?.(body);
   enhanceVideoPlaceholders(body);
+  enhanceLotteryCards(body);
   chatHooks.syncAiSummary?.();
+}
+
+/** 抽奖插件的数据摘要不足以完整还原组件，因此从同楼层的原生组件复制只读内容，
+ * 再把购买操作代理回仍由 NodeLoc 管理的原生按钮。 */
+export function enhanceLotteryCards(root) {
+  if (!root) return;
+  for (const card of root.querySelectorAll(".im-lottery-card:not([data-im-lottery-enhanced])")) {
+    const postNumber = Number(card.closest(".im-msg")?.dataset.postNumber || 0);
+    const nativePost = document.querySelector(
+      `article[data-post-number="${postNumber}"], .topic-post[data-post-number="${postNumber}"]`
+    );
+    const widget = nativePost?.querySelector(".lottery-widget");
+    if (!widget) continue;
+    const clone = widget.cloneNode(true);
+    clone.classList.add("im-lottery-widget");
+    clone.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
+    clone.querySelectorAll("button").forEach((button) => {
+      button.type = "button";
+      button.dataset.imNativePlugin = "1";
+      button.dataset.imPluginAction = "lottery";
+      button.dataset.postNumber = String(postNumber);
+    });
+    card.dataset.imLotteryEnhanced = "1";
+    card.replaceChildren(clone);
+  }
 }
 
 /** NodeLoc AnyVideo 在原生 cooked 挂载后才会把空占位转换成播放器。
@@ -400,14 +426,15 @@ function bindChatPanelEvents(panel) {
       e.preventDefault();
       e.stopPropagation();
       const pluginAction = nativePlugin.dataset.imPluginAction;
-      if (pluginAction === "reward" || pluginAction === "vote-up" || pluginAction === "vote-down") {
+      if (pluginAction === "reward" || pluginAction === "lottery" || pluginAction === "vote-up" || pluginAction === "vote-down") {
         const postNumber = Number(nativePlugin.dataset.postNumber || nativePlugin.closest(".im-msg")?.dataset.postNumber);
         const nativePost = document.querySelector(
           `article[data-post-number="${postNumber}"], .topic-post[data-post-number="${postNumber}"]`
         );
         const nativeTrigger = nativePost?.querySelector(pluginAction === "reward"
           ? ".discourse-rewards-add-trigger"
-          : pluginAction === "vote-up" ? ".discourse-vote-up-trigger" : ".discourse-vote-down-trigger");
+          : pluginAction === "lottery" ? ".lottery-buy-btn"
+            : pluginAction === "vote-up" ? ".discourse-vote-up-trigger" : ".discourse-vote-down-trigger");
         if (nativeTrigger) {
           nativeTrigger.click();
           if (pluginAction.startsWith("vote-")) {
