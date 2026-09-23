@@ -14,6 +14,7 @@ import { getViewMode } from "../state/view-state.js";
 import { avatarColor, avatarLetter } from "./shared/avatars.js";
 import { hasSource, setActiveRailKey } from "./list-sources.js";
 import { closeDingtalkWorkbench, openDingtalkWorkbench } from "../features/dingtalk-workbench.js";
+import { closeDingtalkChatHub, openDingtalkChatHub } from "../features/dingtalk-chat-hub.js";
 import { navigateInApp } from "../bridge/router.js";
 
 // rail 刷新（角标等）由皮肤分派层注册，避免 ui → skins 反向依赖
@@ -223,11 +224,18 @@ export function ensureRailDingtalk() {
     if (!btn || !items.contains(btn)) return;
     const key = btn.dataset.railKey;
     if (SKIN_ID === "dingtalk" && key === "work") {
+      closeDingtalkChatHub();
       setNav2Open(false);
       openDingtalkWorkbench();
       return;
     }
     if (SKIN_ID === "dingtalk") closeDingtalkWorkbench();
+    if (SKIN_ID === "dingtalk" && key === "messages") {
+      setNav2Open(false);
+      openDingtalkChatHub();
+      return;
+    }
+    if (SKIN_ID === "dingtalk") closeDingtalkChatHub();
     if (key === "chats") {
       // 原生 /chat 会直接打开最近频道（像和某人的单聊）；频道列表页才是「聊天列表」
       navigateInApp("/chat/channels");
@@ -529,6 +537,7 @@ function toggleDingtalkProfileMenu() {
     return;
   }
   closeDingtalkWorkbench();
+  closeDingtalkChatHub();
   const toggle = nativeUserToggle();
   if (!toggle) return;
   profileMenuOpening = true;

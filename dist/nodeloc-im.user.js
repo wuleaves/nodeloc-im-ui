@@ -2,7 +2,7 @@
 // @name         NodeLoc · IM 外观（钉钉 / 飞书 / 企业微信）
 // @namespace    https://www.nodeloc.com/
 // @author       czm15053, NodeLoc adaptation
-// @version      0.3.3
+// @version      0.4.0
 // @description  NodeLoc 三栏 IM 外观：节点/主题列表、帖子流、回复、搜索、用户与通知，支持三套皮肤和明暗主题。
 // @match        https://www.nodeloc.com/*
 // @noframes
@@ -716,6 +716,59 @@
       color: var(--im-text); font-size: 13px; line-height: 17px;
     }
     .__ROOT_CLASS__.__DARK_CLASS__ .im-dd-app-icon { filter: brightness(.88) saturate(.9); }
+
+    /* ---------- 私信：把 NodeLoc 原生 Chat 抽屉扩展为钉钉全尺寸聊天页 ---------- */
+    .__ROOT_CLASS__.im-chat-hub-open .chat-drawer-outlet,
+    .__ROOT_CLASS__.im-chat-hub-open .chat-drawer-outlet-container {
+      position: fixed !important;
+      left: var(--im-nav) !important; right: 0 !important;
+      top: var(--im-header-h) !important; bottom: 0 !important;
+      width: auto !important; height: auto !important; max-width: none !important;
+      margin: 0 !important; padding: 0 !important;
+      z-index: 470 !important; pointer-events: none !important;
+    }
+    .__ROOT_CLASS__.im-chat-hub-open .chat-drawer.im-dingtalk-chat-hub {
+      position: absolute !important; inset: 0 !important;
+      width: 100% !important; height: 100% !important;
+      max-width: none !important; max-height: none !important;
+      margin: 0 !important; border: 0 !important; border-radius: 0 !important;
+      overflow: hidden !important; pointer-events: auto !important;
+      background: var(--im-bg) !important; color: var(--im-text) !important;
+      box-shadow: none !important;
+      --primary: var(--im-text);
+      --secondary: var(--im-bg);
+      --tertiary: var(--im-blue);
+      --d-hover: var(--im-hover);
+    }
+    .__ROOT_CLASS__.im-chat-hub-open .im-dingtalk-chat-hub .chat-drawer-container,
+    .__ROOT_CLASS__.im-chat-hub-open .im-dingtalk-chat-hub .chat-drawer-content {
+      width: 100% !important; height: 100% !important; max-width: none !important;
+      border: 0 !important; border-radius: 0 !important; background: var(--im-bg) !important;
+    }
+    .__ROOT_CLASS__.im-chat-hub-open .im-dingtalk-chat-hub .chat-drawer-resizer { display: none !important; }
+    .__ROOT_CLASS__.im-chat-hub-open .im-dingtalk-chat-hub .c-navbar {
+      min-height: 56px !important; padding: 0 20px !important;
+      border-bottom: 1px solid var(--im-border) !important; background: var(--im-bg) !important;
+    }
+    .__ROOT_CLASS__.im-chat-hub-open .im-dingtalk-chat-hub .c-navbar__title,
+    .__ROOT_CLASS__.im-chat-hub-open .im-dingtalk-chat-hub .c-navbar__channel-title {
+      color: var(--im-text) !important; font-size: 17px !important; font-weight: 600 !important;
+    }
+    .__ROOT_CLASS__.im-chat-hub-open .im-dingtalk-chat-hub .c-footer {
+      min-height: 64px !important; border-top: 1px solid var(--im-border) !important;
+      background: var(--im-bg) !important;
+    }
+    .__ROOT_CLASS__.im-chat-hub-open .im-dingtalk-chat-hub .c-footer__item {
+      color: var(--im-text-3) !important;
+    }
+    .__ROOT_CLASS__.im-chat-hub-open .im-dingtalk-chat-hub .c-footer__item.active,
+    .__ROOT_CLASS__.im-chat-hub-open .im-dingtalk-chat-hub .c-footer__item[aria-current="page"] {
+      color: var(--im-blue) !important;
+    }
+    .__ROOT_CLASS__.im-chat-hub-open .im-list-panel,
+    .__ROOT_CLASS__.im-chat-hub-open .im-chat-panel,
+    .__ROOT_CLASS__.im-chat-hub-open .im-strip,
+    .__ROOT_CLASS__.im-chat-hub-open .im-nav2 { visibility: hidden !important; pointer-events: none !important; }
 
     /* 右边缘拖拽柄：左右拉伸 rail */
     .im-rail-resizer {
@@ -12657,6 +12710,76 @@ ${item.label}`;
     await expandNativeSections();
     if (document.body.contains(panel)) renderSections(panel);
   }
+  const HUB_CLASS = "im-chat-hub-open";
+  let outsideBound = false;
+  let drawerObserver = null;
+  function nativeDrawer() {
+    return document.querySelector(".chat-drawer");
+  }
+  function nativeChatToggle() {
+    return document.querySelector(
+      'a[title="聊天"], .header-dropdown-toggle.chat button, .chat-header-icon button, a.btn[href="/chat"]'
+    );
+  }
+  function decorateDrawer(drawer) {
+    drawer.classList.add("im-dingtalk-chat-hub");
+    drawer.setAttribute("aria-label", "NodeLoc 聊天");
+    document.documentElement.classList.add(HUB_CLASS);
+    document.querySelectorAll(".im-rail-item[data-rail-key]").forEach((item) => {
+      item.classList.toggle("active", item.dataset.railKey === "messages");
+    });
+    if (!drawerObserver) {
+      drawerObserver = new MutationObserver(() => {
+        if (!document.documentElement.classList.contains(HUB_CLASS)) return;
+        const current = nativeDrawer();
+        if (current && !current.classList.contains("im-dingtalk-chat-hub")) decorateDrawer(current);
+      });
+      drawerObserver.observe(document.body, { childList: true, subtree: true });
+    }
+    if (!outsideBound) {
+      outsideBound = true;
+      document.addEventListener("click", (event) => {
+        const close = event.target.closest(
+          '.im-dingtalk-chat-hub .c-navbar__toggle-drawer-button, .im-dingtalk-chat-hub button[title*="关闭聊天"], .im-dingtalk-chat-hub button[aria-label*="关闭聊天"]'
+        );
+        if (!close) return;
+        setTimeout(() => closeDingtalkChatHub({ closeNative: false }), 0);
+      }, true);
+    }
+  }
+  function waitForDrawer(attempt = 0) {
+    const drawer = nativeDrawer();
+    if (drawer) {
+      decorateDrawer(drawer);
+      return;
+    }
+    if (attempt < 20) setTimeout(() => waitForDrawer(attempt + 1), 50);
+  }
+  function closeDingtalkChatHub({ closeNative = true } = {}) {
+    var _a2, _b2;
+    const drawer = nativeDrawer();
+    document.documentElement.classList.remove(HUB_CLASS);
+    drawerObserver == null ? void 0 : drawerObserver.disconnect();
+    drawerObserver = null;
+    drawer == null ? void 0 : drawer.classList.remove("im-dingtalk-chat-hub");
+    (_a2 = document.querySelector('.im-rail-item[data-rail-key="messages"]')) == null ? void 0 : _a2.classList.remove("active");
+    (_b2 = document.querySelector('.im-rail-item[data-rail-key="chat"]')) == null ? void 0 : _b2.classList.add("active");
+    if (!closeNative || !drawer) return;
+    const close = drawer.querySelector(
+      '.c-navbar__toggle-drawer-button, button[title*="关闭聊天"], button[aria-label*="关闭聊天"]'
+    );
+    close == null ? void 0 : close.click();
+  }
+  function openDingtalkChatHub() {
+    var _a2;
+    const drawer = nativeDrawer();
+    if (drawer) {
+      decorateDrawer(drawer);
+      return;
+    }
+    (_a2 = nativeChatToggle()) == null ? void 0 : _a2.click();
+    waitForDrawer();
+  }
   const railRefreshListeners = [];
   function onRailRefresh(fn) {
     railRefreshListeners.push(fn);
@@ -12845,11 +12968,18 @@ ${item.label}`;
       if (!btn || !items.contains(btn)) return;
       const key = btn.dataset.railKey;
       if (SKIN_ID === "dingtalk" && key === "work") {
+        closeDingtalkChatHub();
         setNav2Open(false);
         openDingtalkWorkbench();
         return;
       }
       if (SKIN_ID === "dingtalk") closeDingtalkWorkbench();
+      if (SKIN_ID === "dingtalk" && key === "messages") {
+        setNav2Open(false);
+        openDingtalkChatHub();
+        return;
+      }
+      if (SKIN_ID === "dingtalk") closeDingtalkChatHub();
       if (key === "chats") {
         navigateInApp("/chat/channels");
         return;
@@ -13100,6 +13230,7 @@ ${item.label}`;
       return;
     }
     closeDingtalkWorkbench();
+    closeDingtalkChatHub();
     const toggle = nativeUserToggle();
     if (!toggle) return;
     profileMenuOpening = true;
@@ -17123,7 +17254,7 @@ ${item.label}`;
       }
     }
     function bootstrap() {
-      console.info(`[nodeloc-im] v${"0.3.3"} loaded, skin=${SKIN_ID}`);
+      console.info(`[nodeloc-im] v${"0.4.0"} loaded, skin=${SKIN_ID}`);
       if (!document.documentElement) {
         setTimeout(bootstrap, 0);
         return;

@@ -91,6 +91,13 @@ for (const marker of ["function readNativeIcon(", "has-original-icon", "im-dd-wo
   }
 }
 
+for (const marker of ["function openDingtalkChatHub(", "im-dingtalk-chat-hub", "im-chat-hub-open"]) {
+  if (!output.includes(marker)) {
+    console.error(`missing native Chat hub marker: ${marker}`);
+    ok = false;
+  }
+}
+
 if (ok) {
   console.log("self-check passed");
   process.exit(0);
