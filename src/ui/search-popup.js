@@ -9,8 +9,9 @@ import { avatarColor, avatarLetter, fullAvatarUrl } from "./shared/avatars.js";
 import { ICONS } from "../config/icons.js";
 import { getViewMode } from "../state/view-state.js";
 import { otherThemeActive } from "../config/skins.js";
+import { SEARCH_RECENT_KEY } from "../config/constants.js";
 
-const RECENT_KEY = "linuxdo-im-search-recent";
+const RECENT_KEY = SEARCH_RECENT_KEY;
 const DEBOUNCE_MS = 220;
 
 let recent = loadRecent();
@@ -177,7 +178,9 @@ function buildItems(data) {
       group: "分类",
       title: c.name || c.slug,
       avatar: `<span class="ava is-dot" style="background:#${c.color || "0088CC"}"></span>`,
-      href: `/c/${encodeURIComponent(c.slug || c.id)}${c.id ? `/${c.id}` : ""}`
+      href: c.parent_category_id
+        ? `/n/${encodeURIComponent(c.slug || c.id)}`
+        : `/c/${encodeURIComponent(c.slug || c.id)}${c.id ? `/${c.id}` : ""}`
     });
   }
   for (const t of data.tags || []) {

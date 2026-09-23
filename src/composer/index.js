@@ -92,7 +92,7 @@ function syncEmbedGeometry(active) {
       }
       if (s.zoom && parseFloat(s.zoom) !== 1) hit.push(`zoom=${s.zoom}`);
       if (hit.length) {
-        console.info("[linuxdo-im] 嵌入编辑器包含块被祖先劫持：", n.className || n.id || n.tagName, hit.join(" "));
+        console.info("[nodeloc-im] 嵌入编辑器包含块被祖先劫持：", n.className || n.id || n.tagName, hit.join(" "));
         break;
       }
       n = n.parentElement;

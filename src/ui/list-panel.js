@@ -4,10 +4,10 @@ import { SKIN_ID } from "../config/skins.js";
 import { ICONS } from "../config/icons.js";
 import { escapeHtml } from "../utils/html.js";
 import { api } from "../bridge/api.js";
-import { topicIdFromPath, navigateInApp, listApiForPath } from "../bridge/router.js";
+import { topicIdFromPath, navigateInApp, listApiForPath, resolveListApiPath } from "../bridge/router.js";
 import { chatHooks } from "./hooks.js";
 import { openNewTopicComposer } from "./composer.js";
-import { categoryById } from "../bridge/categories.js";
+import { categoryById, loadCategories } from "../bridge/categories.js";
 import { refreshRail } from "./rail.js";
 import { onListBodyScroll } from "./list-sources.js";
 import { markNotificationRead } from "./notifications.js";
@@ -63,7 +63,7 @@ function setListNavOpen(open) {
   try { localStorage.setItem(LIST_NAV_KEY, listNavOpen ? "1" : "0"); } catch { /* ignore */ }
   applyListNavDom();
 }
-// linux.do 顶部「最新话题」（/?ascending=false&order=created）不在原生 topic-list
+// NodeLoc 门户首页不直接提供 topic-list，筛选面板补一项按创建时间排序的最新话题
 // 导航（#navigation-bar）里，筛选面板固定补一项；原生已有同 href 时不重复
 function withLatestCreated(items) {
   const item = { href: "/?ascending=false&order=created", label: "最新话题" };
@@ -94,7 +94,7 @@ function listSortFromUrl() {
 // 排序仅在这些端点真实生效（latest 流及其变体）；其余筛选页端点不认 order，隐藏下拉
 function listSortSupported(path) {
   return path === "/" || path === "/latest" || path === "/categories" ||
-    /^\/c\//.test(path) || /^\/tag\//.test(path);
+    /^\/c\//.test(path) || /^\/n\//.test(path) || /^\/tag\//.test(path);
 }
 function syncListSort(panel) {
   const sel = panel.querySelector(".im-list-sort");
@@ -502,23 +502,27 @@ let lastListFailAt = 0;
 let lastListFailPath = "";
 export async function loadList(apiPath, force) {
   if (!apiPath) return;
-  if (!force && lastListFailPath === apiPath && Date.now() - lastListFailAt < 30000) return;
+  const routeKey = apiPath;
+  if (!force && lastListFailPath === routeKey && Date.now() - lastListFailAt < 30000) return;
   // 用列表 API 做缓存键：进帖子时 pathname 会变，但不应重拉会话列表
-  if (!force && listState.apiPath === apiPath && listState.topics.length) {
+  if (!force && listState.routeKey === routeKey && listState.topics.length) {
     syncListActive();
     return;
   }
   if (listState.loading) return;
   listState.loading = true;
-  listState.apiPath = apiPath;
+  listState.routeKey = routeKey;
   try {
+    apiPath = await resolveListApiPath(apiPath);
+    listState.apiPath = apiPath;
     const data = await api(apiPath);
     lastListFailAt = 0;
     lastListFailPath = "";
     applyListJson(data, false);
+    loadCategories().then(renderListRows).catch(() => {});
   } catch {
     lastListFailAt = Date.now();
-    lastListFailPath = apiPath;
+    lastListFailPath = routeKey;
     const body = document.querySelector(".im-list-body");
     if (body) body.innerHTML = `<div class="im-list-status">列表加载失败，请点右上角刷新重试</div>`;
   } finally {
@@ -571,4 +575,3 @@ onHighlightConfigChange(() => {
   if (panel) ensureHighlightToggle(panel);
   renderListRows();
 });
-

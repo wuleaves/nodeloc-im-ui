@@ -197,7 +197,7 @@ export function showUserProfile(username) {
   wrap.querySelector(".im-prof-frame-close").addEventListener("click", () => wrap.remove());
   const view = wrap.querySelector("iframe");
   view.addEventListener("load", () => {
-    // 每次导航（含 iframe 内切 tab）都重新走加载态：等 Ember 挂载主内容再淡入，全程不露 linux.do 启动图标
+    // 每次导航（含 iframe 内切 tab）都重新走加载态：等 Ember 挂载主内容再淡入，全程不露原站启动图标
     view.classList.remove("ready");
     if (!wrap.querySelector(".im-prof-frame-loading")) {
       const tip = document.createElement("span");

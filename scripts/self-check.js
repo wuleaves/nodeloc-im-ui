@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 
-const output = fs.readFileSync("dist/linuxdo-im.user.js", "utf8");
+const output = fs.readFileSync("dist/nodeloc-im.user.js", "utf8");
 
 const checks = [
   ["function ensureRail(", 1],
@@ -33,6 +33,12 @@ const checks = [
   ["const listState", 1],
   ["const composerState", 1],
   ["const ICONS", 1],
+  ["@match        https://www.nodeloc.com/*", 1],
+  ["const STYLE_ID = \"nodeloc-im-theme\"", 1],
+  ["function resolveListApiPath(", 1],
+  ["/__nodeloc_node__/", 1],
+  ["function renderNodeLocPostExtras(", 1],
+  ["<section class=\"im-plugin-card im-lottery-card\"", 1],
 ];
 
 let ok = true;
@@ -49,6 +55,11 @@ const stray = (output.match(/class="[^"]*(?:dingtalk|feishu|wecom)-[^"]*"/g) || 
 );
 if (stray.length) {
   console.error("stray brand classes remain: " + stray.slice(0, 5).join(" | "));
+  ok = false;
+}
+
+if (output.includes("@match        https://linux.do/*") || output.includes("connect.linux.do")) {
+  console.error("Linux.do-only metadata or network endpoint leaked into NodeLoc build");
   ok = false;
 }
 

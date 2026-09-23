@@ -28,9 +28,9 @@ export default defineConfig({
   build: {
     lib: {
       entry: "src/main.js",
-      name: "LinuxDoIM",
+      name: "NodeLocIM",
       formats: ["iife"],
-      fileName: () => "linuxdo-im.user.js",
+      fileName: () => "nodeloc-im.user.js",
     },
     outDir: "dist",
     emptyOutDir: true,

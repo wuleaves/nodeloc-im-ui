@@ -1,5 +1,6 @@
 
 export const listState = {
+  routeKey: "",
   apiPath: "",
   moreUrl: null,
   loading: false,
@@ -17,5 +18,5 @@ export const DEFAULT_LIST_NAV = [
   { href: "/posted", label: "我的帖子" },
   { href: "/read", label: "已读" },
   { href: "/bookmarks", label: "书签" },
-  { href: "/categories", label: "类别" }
+  { href: "/nodes", label: "节点" }
 ];

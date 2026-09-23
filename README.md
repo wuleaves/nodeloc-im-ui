@@ -1,124 +1,61 @@
-# Linux DO · IM 外观脚本（钉钉 / 飞书 / 企业微信）
+# NodeLoc · IM 外观 userscript
 
-一套用户脚本，把 [linux.do](https://linux.do/) 的消息页换成 **钉钉 PC IM**、**飞书 IM** 或 **企业微信** 风格。只换皮，不碰数据——内容、链接、按钮与交互全部保留。
+把 [NodeLoc](https://www.nodeloc.com/) 的 Discourse 界面重组为三栏 IM 布局。项目基于
+[czm15053/linuxdo-idea-ui](https://github.com/czm15053/linuxdo-idea-ui/tree/main/im)
+的 `im` 架构适配，保留钉钉、飞书、企业微信三套皮肤。
 
-- 一套脚本三种皮肤：钉钉 / 飞书 / 企业微信，中栏顶部一键切换
-- 公共内核：水贴过滤与折叠、投票、小火箭（点赞）、图片灯箱、引用跳转、实时刷新、三态深色（浅色 / 深色 / 跟随系统）、伪装模式（匿名浏览）
-- 按 [@match](src/meta.js) 仅在 linux.do 顶层 frame 运行，不注入 iframe 内嵌页
+## MVP 功能
+
+- 三栏布局：左侧导航、中栏主题列表、右侧帖子流
+- NodeLoc 首页、标准 Discourse 列表、标签、分类和 `/n/<slug>` 节点路由
+- 主题详情、分页加载、楼层跳转、引用、回复与原生编辑器兜底
+- 全局搜索、用户卡/资料页、通知、私信与书签
+- 浅色、深色、跟随系统；三套皮肤即时切换
+- 完整加载 NodeLoc `site.json` 中的顶级分类与约 200 个节点
+- NodeLoc reactions、vote、reward、lottery、red-envelope 字段的只读兼容展示
+- 对抽奖购券、能量赠送、红包领取等站点私有写操作，提供“原生视图”入口
+- `/apps`、`/nodes`、管理页等非标准 Topic List 页面保留原生界面
 
 ## 安装
 
-1. 安装 [Tampermonkey](https://www.tampermonkey.net/)（或 Violentmonkey）
-2. 构建产物打开 `dist/linuxdo-im.user.js`，点 **Raw** 后安装；或复制 `src/meta.js` 元数据头
-3. 访问 <https://linux.do/>；脚本更新后请硬刷新一次
+1. 安装 Tampermonkey 或 Violentmonkey。
+2. 打开 `dist/nodeloc-im.user.js`，由用户脚本管理器安装。
+3. 访问 <https://www.nodeloc.com/> 并刷新一次。
 
-## 皮肤
+脚本仅匹配 `https://www.nodeloc.com/*`，且不注入 iframe。
 
-| 皮肤 | 风格 | 切换 |
-|---|---|---|
-| 钉钉 | 钉钉 PC IM（左导航 / 中栏会话 / 右栏聊天） | 中栏顶部皮肤名按钮 |
-| 飞书 | 飞书 IM 风格（左 rail / 中栏列表 / 右栏聊天 / 深色切换） | 同左 |
-| 企业微信 | 企业微信风格 | 同左 |
+## NodeLoc 兼容策略
 
-三皮肤互斥，同一时刻只启用一个。
+NodeLoc 的“节点”底层仍是 Discourse Category，但 `/categories.json` 只返回顶级分类。
+本项目改为从 `/site.json` 读取完整分类树，并将 `/n/<slug>` 先解析到 `/n/<slug>.json`，
+再请求标准 `/c/<slug>/<id>.json` 主题列表。
 
-## 功能一览
-
-### 三套皮肤 + 一键切换
-
-一套脚本内置三套皮肤（钉钉 / 飞书 / 企业微信），一个按钮下拉即可切换，偏好本地保存：
-
-![三套皮肤预览](snapshot/三套皮肤预览.png)
-
-![皮肤切换按钮](snapshot/皮肤切换按钮.png)
-
-### 消息互动内核
-
-公共能力，三皮肤通用：
-
-![投票](snapshot/投票.png)
-
-*投票卡：单选 / 多选、进度条、可撤销*
-
-![小火箭](snapshot/小火箭.png)
-
-*小火箭：消息下直接跟评 + 快捷 emoji*
-
-![图片灯箱](snapshot/图片灯箱.png)
-
-*图片灯箱：缩放 / 旋转 / 拖拽 / 滚轮*
-
-![楼层跳转](snapshot/楼层跳转.png)
-
-*楼层跳转：滚动高亮目标楼*
-
-![点击跳转和返回楼层](snapshot/点击跳转和返回楼层.png)
-
-*引用原文 / 楼层可点击跳转，并可返回*
-
-### 水贴过滤与关键词高亮
-
-- **水贴折叠**：自动折叠短回复（默认 ≤12 字符带“谢/mark/cy/666”等）与全局水贴词，技术长帖阅读更紧凑，支持就地展开
-- **中栏关键词高亮**：常驻高亮中栏帖子标题中的关注词（默认词库为空），命中的帖子左侧附带微指示条
-- **可视化图形配置**：
-  - 右栏顶部点击盾牌图标 `🛡️`：配置水贴过滤规则、字数阈值与词库
-  - 中栏顶部点击高亮笔图标 `🖍️`：开关高亮、可视化增删关注词库与一键清空
-
-### 用户与搜索
-
-![用户信息卡片](snapshot/用户信息卡片.png)
-
-*用户卡片：点头像 / 昵称 / @提及 弹出*
-
-![全局搜索](snapshot/全局搜索.png)
-
-*全局搜索：⌘/Ctrl+K 面板，帖子 / 用户 / 分类 / 标签*
-
-### 原生编辑器
-
-![原生编辑器表情包](snapshot/原生编辑器表情包.png)
-
-*原地重锚嵌入的原生编辑器 + 表情选择器*
-
-![原生编辑器扩展菜单](snapshot/原生编辑器扩展菜单.png)
-
-*「+」扩展菜单与 Markdown 引擎*
+帖子正文继续直接使用服务端 `cooked` HTML，尽量保留站点原生内容。抽奖、奖励、回应、
+投票等插件如果把数据放在 JSON 的独立字段中，则渲染为 IM 内兼容卡片；未知或需要交易的
+交互不猜测私有 API，切换到 NodeLoc 原生视图完成。
 
 ## 开发
 
 ```bash
-cd im
-pnpm install        # 安装依赖（pnpm 9）
-pnpm build          # 打包 → dist/linuxdo-im.user.js
-pnpm check          # 产物语法 + self-check 断言
-pnpm lint           # ESLint 9 检查
+pnpm install --frozen-lockfile
+pnpm build
+pnpm check
+pnpm lint
 ```
 
-构建单一 IIFE 产物 `dist/linuxdo-im.user.js`，版本号单一来源 `src/meta.js`。
+构建产物：`dist/nodeloc-im.user.js`。
 
-### 目录结构
+## 主要适配文件
 
-```
-im/
-├── src/            # 源码（ES modules）
-│   ├── main.js     # 入口
-│   ├── meta.js     # UserScript 元数据（@name/@version/@match…）
-│   ├── bootstrap.js# 启动 / 皮肤分派 / 互斥避让
-│   ├── skins/      # 三皮肤实现 + dispatch
-│   ├── ui/         # 三栏 IM 结构（rail/strip/list/chat/composer/titlebar…）
-│   ├── bridge/     # Discourse API 封装
-│   ├── state/      # 前端状态
-│   ├── features/   # 互动能力（投票/点赞/灯箱/引用跳转…）
-│   ├── config/     # 常量 / 图标 / 皮肤元信息
-│   ├── styles/     # 各皮肤样式
-│   └── theme/      # 主题（浅色/深色/跟随系统）
-├── scripts/        # 开发辅助（self-check 等）
-├── dist/           # 构建产物（gitignore）
-├── package.json
-└── vite.config.js
-```
+- `src/meta.js`：NodeLoc match、名称、图标与版本
+- `src/bridge/categories.js`：完整节点/分类映射
+- `src/bridge/router.js`：`/n/<slug>` 到分类列表 JSON 的解析
+- `src/ui/list-panel.js`：节点列表加载与缓存键
+- `src/ui/chat-panel.js`：NodeLoc 分类链接、帖子插件扩展与原生降级
+- `src/features/nodeloc-plugins.js`：lottery/reward/reactions/vote/red-envelope 兼容卡
+- `src/config/*`：独立的 `nodeloc-im-*` 本地偏好键，避免与 Linux.do 版本冲突
 
-## 说明
+## 许可与来源
 
-- 全部交互仍由 Discourse 原生处理；本脚本负责外观与交互效率（如原地重锚的编辑器嵌入、全局搜索面板）
-- 若与旧版单皮肤脚本同时启用会有避让处理
+原项目以 MIT License 发布，版权归原作者 czm15053 所有。本适配保留原项目结构、
+版权声明与许可文本；新增适配代码同样按 MIT License 分发。

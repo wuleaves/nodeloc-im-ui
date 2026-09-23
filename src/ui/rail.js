@@ -186,8 +186,8 @@ export function ensureRailDingtalk() {
   } else {
     head.innerHTML =
       `<div class="im-rail-org-chip">` +
-      `<span class="im-rail-org-logo">do</span>` +
-      `<span class="im-rail-org-name">linux.do</span>` +
+      `<span class="im-rail-org-logo">NL</span>` +
+      `<span class="im-rail-org-name">NodeLoc</span>` +
       `<svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 4l3 3 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>` +
       `</div>`;
   }
@@ -467,7 +467,7 @@ export function bindRailAvatarNotif(rail) {
       navigateInApp("/");
       refreshRail();
     } catch (err) {
-      console.warn("[linuxdo-im] avatar → home failed", err);
+      console.warn("[nodeloc-im] avatar → home failed", err);
     }
   });
 }
@@ -492,7 +492,7 @@ export function bindHeaderUserMenuInterception() {
       try {
         openNotificationsColumn();
       } catch (err) {
-        console.warn("[linuxdo-im] header user-menu interception failed", err);
+        console.warn("[nodeloc-im] header user-menu interception failed", err);
       }
     },
     true

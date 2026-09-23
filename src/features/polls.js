@@ -364,11 +364,11 @@ function enhanceAllPolls(container) {
         const postData = postNum ? topicPostsMap.get(postNum) : null;
         initPollComponent(poll, postData);
       } catch (innerErr) {
-        console.warn("[linuxdo-im] initPollComponent warning:", innerErr);
+        console.warn("[nodeloc-im] initPollComponent warning:", innerErr);
       }
     }
   } catch (err) {
-    console.warn("[linuxdo-im] enhanceAllPolls warning:", err);
+    console.warn("[nodeloc-im] enhanceAllPolls warning:", err);
   }
 }
 

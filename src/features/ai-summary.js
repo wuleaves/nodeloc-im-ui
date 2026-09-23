@@ -485,7 +485,7 @@ function subscribe(topicId) {
     mb.subscribe(channel, busHandler, -1);
     return true;
   } catch (err) {
-    console.warn("[linuxdo-im] MessageBus.subscribe failed", err);
+    console.warn("[nodeloc-im] MessageBus.subscribe failed", err);
     busChannel = null;
     busHandler = null;
     return false;

@@ -49,7 +49,7 @@ export function getEmberOwner() {
       if (typeof app?.lookup === "function") return app;
     } catch { /* ignore */ }
   } catch (err) {
-    console.warn("[linuxdo-im] getEmberOwner failed", err);
+    console.warn("[nodeloc-im] getEmberOwner failed", err);
   }
   return null;
 }

@@ -2665,4 +2665,71 @@ color: #7AA3D6;
       padding: 10px 4px;
       display: inline-block;
     }
+
+    /* ============ NodeLoc 插件只读兼容层 ============ */
+    .__ROOT_CLASS__ .im-nodeloc-extras {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .__ROOT_CLASS__ .im-plugin-card {
+      min-width: 240px;
+      padding: 12px;
+      border: 1px solid var(--im-border);
+      border-radius: 10px;
+      background: color-mix(in srgb, var(--im-panel) 94%, var(--im-accent) 6%);
+      color: var(--im-text-1);
+    }
+    .__ROOT_CLASS__ .im-plugin-head,
+    .__ROOT_CLASS__ .im-plugin-meta,
+    .__ROOT_CLASS__ .im-plugin-inline,
+    .__ROOT_CLASS__ .im-plugin-winners,
+    .__ROOT_CLASS__ .im-reward-people {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .__ROOT_CLASS__ .im-plugin-head { justify-content: space-between; }
+    .__ROOT_CLASS__ .im-plugin-head > span,
+    .__ROOT_CLASS__ .im-plugin-meta,
+    .__ROOT_CLASS__ .im-plugin-winners { color: var(--im-text-3); font-size: 12px; }
+    .__ROOT_CLASS__ .im-lottery-card { border-color: color-mix(in srgb, #f59e0b 45%, var(--im-border)); }
+    .__ROOT_CLASS__ .im-lottery-card .status { color: #b76b00; font-weight: 600; }
+    .__ROOT_CLASS__ .im-plugin-prizes { margin: 10px 0; padding: 0; list-style: none; }
+    .__ROOT_CLASS__ .im-plugin-prizes li { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; }
+    .__ROOT_CLASS__ .im-plugin-winners a { color: var(--im-accent); }
+    .__ROOT_CLASS__ .im-plugin-native {
+      margin-top: 10px;
+      padding: 6px 10px;
+      border: 1px solid var(--im-border);
+      border-radius: 7px;
+      background: var(--im-panel);
+      color: var(--im-accent);
+      cursor: pointer;
+      font: inherit;
+    }
+    .__ROOT_CLASS__ .im-plugin-native:hover { border-color: var(--im-accent); }
+    .__ROOT_CLASS__ .im-reward-people { margin-top: 9px; }
+    .__ROOT_CLASS__ .im-reward-people a,
+    .__ROOT_CLASS__ .im-reward-people > span {
+      width: 27px; height: 27px; border-radius: 50%; overflow: hidden;
+      display: inline-flex; align-items: center; justify-content: center;
+      background: var(--im-hover); color: var(--im-text-2); font-size: 11px;
+    }
+    .__ROOT_CLASS__ .im-reward-people img { width: 100%; height: 100%; object-fit: cover; }
+    .__ROOT_CLASS__ .im-plugin-inline { gap: 6px; }
+    .__ROOT_CLASS__ .im-plugin-reactions { display: inline-flex; flex-wrap: wrap; gap: 5px; }
+    .__ROOT_CLASS__ .im-reaction-chip,
+    .__ROOT_CLASS__ .im-plugin-vote {
+      display: inline-flex; align-items: center; gap: 4px;
+      min-height: 24px; padding: 2px 8px; border: 1px solid var(--im-border);
+      border-radius: 999px; background: var(--im-panel); color: var(--im-text-2); font: inherit; font-size: 12px;
+      cursor: pointer;
+    }
+    .__ROOT_CLASS__ .im-reaction-chip:hover,
+    .__ROOT_CLASS__ .im-plugin-vote:hover { border-color: var(--im-accent); color: var(--im-accent); }
+    .__ROOT_CLASS__ .im-reaction-chip.active { border-color: var(--im-accent); color: var(--im-accent); }
+    .__ROOT_CLASS__ .im-envelope-card { border-color: color-mix(in srgb, #ef4444 40%, var(--im-border)); }
+    .__ROOT_CLASS__ .im-envelope-card p { margin: 8px 0 0; color: var(--im-text-3); font-size: 12px; }
 `

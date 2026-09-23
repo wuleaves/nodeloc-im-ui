@@ -986,7 +986,7 @@ function openComposerViaService(postNumber) {
       return true;
     }
   } catch (err) {
-    console.warn("[linuxdo-im] composer service open failed", err);
+    console.warn("[nodeloc-im] composer service open failed", err);
   }
   return false;
 }
@@ -1072,7 +1072,7 @@ function openNativeComposer(postNumber) {
           flashComposeHint("编辑器已打开", "busy");
         } else {
           flashComposeHint("打开失败：请点右上角「原生视图」回复", "error");
-          console.warn("[linuxdo-im] openNativeComposer failed", {
+          console.warn("[nodeloc-im] openNativeComposer failed", {
             topicId: chatState.topicId,
             postNumber,
             hasOwner: !!getEmberOwner(),
@@ -1084,7 +1084,7 @@ function openNativeComposer(postNumber) {
 
     return true;
   } catch (err) {
-    console.warn("[linuxdo-im] openNativeComposer crashed", err);
+    console.warn("[nodeloc-im] openNativeComposer crashed", err);
     flashComposeHint(`打开失败：${err && err.message ? err.message : "未知错误"}`, "error");
     return false;
   }
@@ -1113,7 +1113,7 @@ function openTopicComposerViaService() {
       return true;
     }
   } catch (err) {
-    console.warn("[linuxdo-im] topic composer service open failed", err);
+    console.warn("[nodeloc-im] topic composer service open failed", err);
   }
   return false;
 }
@@ -1158,7 +1158,7 @@ export function openNewTopicComposer() {
         setComposeStatus("编辑器已打开", "busy");
       } else {
         setComposeStatus("打开发帖编辑器失败：请切右上角「原生视图」发帖", "error");
-        console.warn("[linuxdo-im] openNewTopicComposer failed", {
+        console.warn("[nodeloc-im] openNewTopicComposer failed", {
           hasOwner: !!getEmberOwner(),
           hasComposer: !!getComposerService(getEmberOwner())
         });
@@ -1166,7 +1166,7 @@ export function openNewTopicComposer() {
     }, 350);
     return true;
   } catch (err) {
-    console.warn("[linuxdo-im] openNewTopicComposer crashed", err);
+    console.warn("[nodeloc-im] openNewTopicComposer crashed", err);
     setComposeStatus(`打开发帖编辑器失败：${err && err.message ? err.message : "未知错误"}`, "error");
     return false;
   }

@@ -37,7 +37,6 @@ import "./skins/feishu-list.js";
 import "./ui/composer.js";
 import "./composer/index.js";
 import "./features/polls.js";
-import "./features/boost.js";
 import "./features/interactions.js";
 import "./features/lightbox.js";
 import "./features/quote-jump.js";
@@ -58,7 +57,6 @@ import {
 import { isNav2Open, onRailRefresh, isRailCollapsed, setRailCollapsed, syncRailFold } from "./ui/rail.js";
 import { bindHeaderUserMenuInterception } from "./ui/rail.js";
 import { syncNotifStrip } from "./ui/notifications.js";
-import { syncLevelBadge } from "./ui/level-badge.js";
 import { bindSearchShortcut, openSearchPopup } from "./ui/search-popup.js";
 
 
@@ -184,7 +182,7 @@ export function run() {
         observer?.disconnect();
         removePanels();
         document.documentElement.classList.remove(ROOT_CLASS, DARK_CLASS, LOCK_CLASS, "im-topic-open");
-        console.warn("[linuxdo-im] 页面持续 DOM 抖动，已自动回退原生界面。地址:", location.href);
+        console.warn("[nodeloc-im] 页面持续 DOM 抖动，已自动回退原生界面。地址:", location.href);
         return;
       }
       applyTheme();
@@ -217,7 +215,7 @@ export function run() {
       return;
     }
     if (otherThemeActive()) {
-      console.warn("[linuxdo-im] 检测到其他外观脚本（旧版钉钉 / 旧版飞书）已启用，本脚本自动避让。请只保留其中一个。");
+      console.warn("[nodeloc-im] 检测到其他 IM 外观脚本，NodeLoc 版本已自动避让。请只保留其中一个。");
       document.documentElement.classList.remove(ROOT_CLASS, DARK_CLASS, LOCK_CLASS, "im-topic-open");
       removePanels();
       return;
@@ -280,7 +278,6 @@ export function run() {
     if (!profile) renderActiveSource();
     bindHeaderUserMenuInterception();
     ensureChatPanel();
-    syncLevelBadge();
     ensureListResizer();
     applyListWidth(getListWidth());
     syncListNav();
@@ -319,7 +316,7 @@ export function run() {
   }
 
   function bootstrap() {
-    console.info(`[linuxdo-im] v${__IM_VERSION__} loaded, skin=${SKIN_ID}`);
+    console.info(`[nodeloc-im] v${__IM_VERSION__} loaded, skin=${SKIN_ID}`);
     if (!document.documentElement) {
       setTimeout(bootstrap, 0);
       return;
@@ -351,7 +348,7 @@ export function run() {
       });
     }
 
-    const IM_UI_SEL = ".im-list-panel, .im-chat-panel, .im-rail, .im-strip, .im-titlebar, .im-mode-fab, .im-search-pop-overlay, #linuxdo-im-theme";
+    const IM_UI_SEL = ".im-list-panel, .im-chat-panel, .im-rail, .im-strip, .im-titlebar, .im-mode-fab, .im-search-pop-overlay, #nodeloc-im-theme";
     observer = new MutationObserver((mutations) => {
       // CF 挑战页/无效话题页完全静默：页面脚本会持续改 DOM，若在此调度 applyTheme 会加剧主线程占用
       if (cfBlocked() || nativeNotFound()) return;
@@ -362,7 +359,7 @@ export function run() {
         const el = t instanceof Element ? t : t.parentElement;
         if (!el) return true;
         if (el.closest(IM_UI_SEL)) return false;
-        if (el.id === "linuxdo-im-theme") return false;
+        if (el.id === "nodeloc-im-theme") return false;
         return true;
       });
       if (external) scheduleApply();

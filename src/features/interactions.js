@@ -149,7 +149,7 @@ export async function toggleLike(postId, triggerEl) {
       throw new Error(wasLiked ? getNativeCantUndoText(postNum) : "点赞操作未能完成");
     }
   } catch (err) {
-    console.warn("[linuxdo-im] toggleLike error, rollback:", err);
+    console.warn("[nodeloc-im] toggleLike error, rollback:", err);
     const tipText = wasLiked ? getNativeCantUndoText(postNum) : (err.message || "点赞操作未能完成");
     showImToast(tipText, triggerEl);
     if (wasLiked) likedPosts.add(postId); else likedPosts.delete(postId);

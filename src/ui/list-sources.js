@@ -58,7 +58,7 @@ export function renderActiveSource() {
   try {
     sources.get(activeKey)?.render?.(panel);
   } catch (err) {
-    console.warn("[linuxdo-im] rail source render failed:", activeKey, err);
+    console.warn("[nodeloc-im] rail source render failed:", activeKey, err);
   }
   for (const btn of document.querySelectorAll(".im-rail-item[data-rail-key]")) {
     btn.classList.toggle("active", btn.dataset.railKey === activeKey);

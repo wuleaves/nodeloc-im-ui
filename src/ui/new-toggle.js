@@ -1,5 +1,5 @@
 // /new（新）列表顶部的「所有 / 话题 / 回复」筛选条（DISCOURSE-NEW-TOGGLE）。
-// 吸附 linux.do 原生 /new 页的同名组件：计数文本从原生 DOM 读取，
+// 吸附 NodeLoc 原生 /new 页的同名组件：计数文本从原生 DOM 读取，
 // 点击切换对应路由（/new, /new?subset=topics, /new?subset=replies）并请求相应接口。
 
 import { navigateInApp } from "../bridge/router.js";

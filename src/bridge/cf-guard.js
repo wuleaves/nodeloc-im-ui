@@ -6,9 +6,9 @@
 //  - 旧式 challenge：明确的结构 id（#challenge-running / form#challenge-form 等），单信号即判；
 //  - 新式 managed plus（Turnstile 内联 + closed shadowroot）：无 form#challenge-form，靠 CF 盾专属
 //    标题识别。标题在 document-start 已可读，单信号即判还能避免「先套皮再回退」的闪烁
-//    （Linux.do 正常页标题恒为「主题 - Linux.do」，不会命中）；
+//    （NodeLoc 正常页标题不会命中这些挑战页标题）；
 //  - 兜底：标题尚未就绪（磁盘缓存/预渲染）时，challenge 组件需与挑战专属结构同时出现。
-//    不做孤立 widget 单判——linux.do 正常页可能残留孤立的 input#cf-chl-widget-*，会误伤。
+//    不做孤立 widget 单判——Discourse 正常页可能残留孤立的 input#cf-chl-widget-*，会误伤。
 export function cfBlocked() {
   try {
     if (document.querySelector("#challenge-running, #cf-challenge-running, form#challenge-form")) {

@@ -93,7 +93,7 @@ function toggleSkinMenu(anchor) {
       (id) =>
         `<button type="button" class="im-skin-item${id === SKIN_ID ? " active" : ""}" data-skin="${id}"><span>${SKINS[id].label}</span>${id === SKIN_ID ? `<span class="ok">${SKIN_CHECK}</span>` : ""}</button>`
     ).join("") +
-    // 原版皮肤 = 退回 linux.do 原生界面（右下角悬浮球可切回 IM）
+    // 原版皮肤 = 退回 NodeLoc 原生界面（右下角悬浮球可切回 IM）
     `<div class="im-skin-sep"></div>` +
     `<button type="button" class="im-skin-item" data-mode="native"><span>原版皮肤</span></button>`;
   menu.addEventListener("click", (e) => {

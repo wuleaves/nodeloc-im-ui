@@ -9,7 +9,7 @@ import { pg } from "../bridge/page.js";
 import { getCurrentUsername, isMyPost, normalizeUsername } from "../bridge/user.js";
 import { topicIdFromPath, postNumberFromPath, navigateInApp } from "../bridge/router.js";
 import { setViewMode } from "../state/view-state.js";
-import { loadCategories, categoryById } from "../bridge/categories.js";
+import { loadCategories, categoryById, categoryHref } from "../bridge/categories.js";
 import { skinHooks } from "../skins/hooks.js";
 import { SKIN_ID, SKINS } from "../config/skins.js";
 import { chatHooks } from "./hooks.js";
@@ -23,6 +23,7 @@ import {
   isSpamPost, isPostExpanded, expandPost, clearExpandedPosts, onSpamFilterChange
 } from "../features/spam-filter.js";
 import { openSpamConfigDialog } from "./spam-config-dialog.js";
+import { renderNodeLocPostExtras } from "../features/nodeloc-plugins.js";
 
 function afterChatPaint(body) {
   chatHooks.enhancePolls?.(body);
@@ -86,7 +87,7 @@ export function ensureChatPanel() {
   panel.className = "im-chat-panel";
   panel.dataset.empty = "1";
   panel.dataset.composeBound = "1";
-  // 快捷输入框工具条：按钮集合/顺序/图标对齐 linux.do 原生编辑器工具栏（额外保留删除线、拆分两种列表）
+  // 快捷输入框工具条：按钮集合/顺序对齐 Discourse 原生编辑器工具栏
   const toolKeys = ["bold", "italic", "heading", "strike", "link", "quote", "code", "folder", "listUl", "listOl", "emoji", "plus", "preview"];
   const toolTitles = {
     bold: "粗体（Ctrl/⌘+B）",
@@ -330,10 +331,6 @@ function bindChatPanelEvents(panel) {
     if (!msg) return;
     if (toolBtn.dataset.action === "like") {
       chatHooks.toggleLike(Number(msg.dataset.postId), toolBtn);
-    } else if (toolBtn.dataset.action === "boost") {
-      e.preventDefault();
-      e.stopPropagation();
-      chatHooks.openBoostComposer(msg);
     } else if (toolBtn.dataset.action === "reply") {
       e.preventDefault();
       e.stopPropagation();
@@ -350,30 +347,12 @@ function bindChatPanelEvents(panel) {
     }
   });
   panel.addEventListener("click", (e) => {
-    // 小火箭胶囊 hover 显示删除，点击删除
-    const chip = e.target.closest(".im-rocket-chip.is-my-boost");
-    if (chip && panel.contains(chip)) {
-      const msg = chip.closest(".im-msg");
-      const postId = msg ? msg.dataset.postId : null;
-      const boostId = chip.dataset.boostId;
-      if (e.target.closest(".im-rocket-trash")) {
-        e.preventDefault();
-        e.stopPropagation();
-        if (postId) chatHooks.deleteBoost(Number(postId), boostId || null, chip);
-      } else {
-        // 点击胶囊本身也打开输入条
-        e.preventDefault();
-        e.stopPropagation();
-        if (msg) chatHooks.openBoostComposer(msg);
-      }
-      return;
-    }
-    const rocketBtn = e.target.closest(".im-rocket-btn");
-    if (rocketBtn && panel.contains(rocketBtn)) {
+    const nativePlugin = e.target.closest("[data-im-native-plugin]");
+    if (nativePlugin && panel.contains(nativePlugin)) {
       e.preventDefault();
       e.stopPropagation();
-      const msg = rocketBtn.closest(".im-msg");
-      if (msg) chatHooks.openBoostComposer(msg);
+      setViewMode("native");
+      location.reload();
       return;
     }
     const spamExpandBtn = e.target.closest(".im-spam-expand-btn");
@@ -570,7 +549,7 @@ function cookedWithQuoteBars(post) {
         const jumpable = postNo && !crossTopic;
         if (jumpable) bar.dataset.jumpPost = String(postNo);
         const bodyHtml = aside.querySelector("blockquote")?.innerHTML || aside.innerHTML || "";
-        // 引用头里的标题链接（linux.do 新版 quote title 内嵌 <a>）：显示标题行，点击跳原帖
+        // 新版 Discourse quote title 内嵌 <a>：显示标题行，点击跳原帖
         let titleLink = "";
         const titleA = aside.querySelector(".title a[href]");
         if (titleA) {
@@ -617,7 +596,7 @@ function toggleQuoteExpand(bar) {
   bar.classList.toggle("expanded");
 }
 
-/** 引用块作者名：标准 data-username → linux.do 新版无该属性，从头像 URL 路径段
+/** 引用块作者名：标准 data-username → 新版 Discourse 无该属性时从头像 URL 路径段
  *  （/user_avatar/<site>/<username>/）提取 → title 文本截断兜底 */
 function quoteAuthorName(aside) {
   const direct = String(aside.dataset.username || "").trim();
@@ -712,7 +691,7 @@ function bubbleHtml(post, myName) {
       <span class="im-like-count">${likeCount > 0 ? likeCount : ''}</span>
     </span>`;
 
-  const boostBar = chatHooks.renderBoosts?.(post) || "";
+  const pluginExtras = renderNodeLocPostExtras(post);
   return `
     <div class="im-msg im-msg-${side}" data-post-number="${post.post_number}"${post.id ? ` data-post-id="${post.id}"` : ""}${me ? ' data-mine="1"' : ""} data-username="${escapeHtml(post.username || "")}" data-bookmarked="${post.bookmarked ? "1" : "0"}">
       <span class="im-msg-avatar" style="background:${avatarBg}">${avatar}</span>
@@ -721,8 +700,8 @@ function bubbleHtml(post, myName) {
         <div class="im-msg-bubble">
           ${quoteHtml}
           ${cookedWithQuoteBars(post)}
+          ${pluginExtras}
         </div>
-        ${boostBar}
         <span class="im-msg-meta">
           <span>#${post.post_number}</span>
           <span>${escapeHtml(formatTime(post.created_at))}</span>
@@ -730,7 +709,6 @@ function bubbleHtml(post, myName) {
         </span>
         <div class="im-msg-tools">
           <button class="im-msg-tool${liked}${!canUndo ? " cannot-undo" : ""}" data-action="like" data-can-undo="${canUndo ? "1" : "0"}" title="${likeTooltip}">${isLiked ? ICONS.heartFilled : ICONS.heartOutline}</button>
-          <button class="im-msg-tool" data-action="boost" title="小火箭">${ICONS.rocket}</button>
           <button class="im-msg-tool" data-action="reply" title="回复">${ICONS.reply}</button>
           <button class="im-msg-tool" data-action="copy-link" title="复制链接">${ICONS.link}</button>
           <button class="im-msg-tool${post.bookmarked ? " bookmarked" : ""}" data-action="bookmark" title="${post.bookmarked ? "取消收藏" : "收藏"}">${post.bookmarked ? (ICONS.bookmarkFill || ICONS.bookmark) : ICONS.bookmark}</button>
@@ -959,6 +937,9 @@ export async function loadTopic(topicId) {
     chatState.hasNewer = chatState.renderedLastIdx >= 0 &&
       chatState.renderedLastIdx < chatState.stream.length - 1;
     chatState.op = posts.find((p) => p.post_number === 1) || posts[0] || null;
+    if (chatState.op && data.red_envelope && !chatState.op.red_envelope) {
+      chatState.op.red_envelope = data.red_envelope;
+    }
     chatState.title = data.title || "";
     chatState.totalPosts = Number(data.posts_count) || chatState.stream.length || posts.length || 0;
 
@@ -979,7 +960,7 @@ export async function loadTopic(topicId) {
       }
     }
     const replyTotal = data.posts_count || posts.length;
-    if (sub) sub.textContent = `归属于 linux.do · ${replyTotal} 条回复`;
+    if (sub) sub.textContent = `归属于 NodeLoc · ${replyTotal} 条回复`;
     // 头部元信息第二组：楼层数（当前位置 / 总楼数，点击弹出「选择楼层」）
     const metrics = document.querySelector(".im-chat-metrics");
     if (metrics) {
@@ -1002,7 +983,7 @@ export async function loadTopic(topicId) {
       const chipsBox = document.querySelector(".im-chat-chips");
       if (chipsBox) {
         chipsBox.innerHTML = cat
-          ? `<a class="im-chat-chip" href="/c/${escapeHtml(cat.slug)}/${cat.id}"><span class="im-nav2-cat-dot" style="background:#${escapeHtml(cat.color || "8F959E")}"></span>${escapeHtml(cat.name)}</a>`
+          ? `<a class="im-chat-chip" href="${escapeHtml(categoryHref(cat))}"><span class="im-nav2-cat-dot" style="background:#${escapeHtml(cat.color || "8F959E")}"></span>${escapeHtml(cat.name)}</a>`
           : "";
       }
       if (cat && sub) sub.textContent = `归属于 ${cat.name} · ${replyTotal} 条回复`;

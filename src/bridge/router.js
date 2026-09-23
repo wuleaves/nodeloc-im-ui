@@ -1,3 +1,4 @@
+import { api } from "./api.js";
 import { discourseRequire } from "./discourse.js";
 import { pg } from "./page.js";
 
@@ -20,7 +21,7 @@ export function postNumberFromPath(pathname) {
 export function isHomePath(pathname) {
   return pathname === "/" ||
     /^\/(latest|new|unread|unseen|top|categories|hot|posted|read|bookmarks)\b/.test(pathname) ||
-    /^\/c\//.test(pathname) || /^\/tag\//.test(pathname);
+    /^\/c\//.test(pathname) || /^\/n\/[^/]+\/?$/.test(pathname) || /^\/tag\//.test(pathname);
 }
 /** 列表排序参数（order/ascending）从当前 URL 提取，追加到列表端点 query */
 function listSortQuery(search) {
@@ -71,7 +72,24 @@ export function listApiForPath(urlOrPath) {
     const id = t[2] || (/^(\d+)-tag$/.exec(t[1]) || [])[1];
     return `/tag/${t[1]}${id ? `/${id}` : ""}.json` + q("");
   }
+  const node = path.match(/^\/n\/([^/?#]+)\/?$/);
+  if (node) return `/__nodeloc_node__/${encodeURIComponent(node[1])}` + q("");
   return "/latest.json" + q("");
+}
+
+/**
+ * NodeLoc 的 /n/:slug.json 只返回节点元数据，不返回 topic_list。
+ * 先把节点解析为底层 Discourse category，再读取标准分类列表 JSON。
+ */
+export async function resolveListApiPath(apiPath) {
+  const raw = String(apiPath || "");
+  const match = raw.match(/^\/__nodeloc_node__\/([^?]+)(\?.*)?$/);
+  if (!match) return raw;
+  const slug = decodeURIComponent(match[1]);
+  const node = await api(`/n/${encodeURIComponent(slug)}.json`);
+  const category = node?.category;
+  if (!category?.id) throw new Error("节点不存在或不可访问");
+  return `/c/${encodeURIComponent(category.slug || slug)}/${category.id}.json${match[2] || ""}`;
 }
 
 /** 站内软跳转：避免中栏自定义链接触发浏览器整页重载 */
