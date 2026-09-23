@@ -37,6 +37,8 @@ const lotteryBindings = new WeakMap();
 function cloneLotteryWidget(widget) {
   const clone = widget.cloneNode(true);
   clone.classList.add("im-lottery-widget");
+  // 保留 v0.6.5 的操作区布局类；只克隆外观，事件仍代理给未移动的原生组件。
+  clone.querySelector(".lottery-inline-dialog-wrapper")?.classList.add("im-lottery-native-actions");
   clone.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
   return clone;
 }

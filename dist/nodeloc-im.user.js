@@ -2,7 +2,7 @@
 // @name         NodeLoc · IM 外观（钉钉 / 飞书 / 企业微信）
 // @namespace    https://www.nodeloc.com/
 // @author       czm15053, NodeLoc adaptation
-// @version      0.6.6
+// @version      0.6.7
 // @description  NodeLoc 三栏 IM 外观：节点/主题列表、帖子流、回复、搜索、用户与通知，支持三套皮肤和明暗主题。
 // @match        https://www.nodeloc.com/*
 // @noframes
@@ -9526,8 +9526,10 @@ html.im-theme {
   }
   const lotteryBindings = /* @__PURE__ */ new WeakMap();
   function cloneLotteryWidget(widget) {
+    var _a2;
     const clone = widget.cloneNode(true);
     clone.classList.add("im-lottery-widget");
+    (_a2 = clone.querySelector(".lottery-inline-dialog-wrapper")) == null ? void 0 : _a2.classList.add("im-lottery-native-actions");
     clone.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
     return clone;
   }
@@ -17699,7 +17701,7 @@ ${item.label}`;
       }
     }
     function bootstrap() {
-      console.info(`[nodeloc-im] v${"0.6.6"} loaded, skin=${SKIN_ID}`);
+      console.info(`[nodeloc-im] v${"0.6.7"} loaded, skin=${SKIN_ID}`);
       if (!document.documentElement) {
         setTimeout(bootstrap, 0);
         return;
