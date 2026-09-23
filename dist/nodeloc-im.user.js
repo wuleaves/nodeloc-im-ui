@@ -2,7 +2,7 @@
 // @name         NodeLoc · IM 外观（钉钉 / 飞书 / 企业微信）
 // @namespace    https://www.nodeloc.com/
 // @author       czm15053, NodeLoc adaptation
-// @version      0.3.0
+// @version      0.3.1
 // @description  NodeLoc 三栏 IM 外观：节点/主题列表、帖子流、回复、搜索、用户与通知，支持三套皮肤和明暗主题。
 // @match        https://www.nodeloc.com/*
 // @noframes
@@ -733,7 +733,7 @@
     }
 
     /* ---------- 聊天 header 头像与标题行 ---------- */
-    .im-chat-head-main { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .im-chat-head-main { display: flex; align-items: flex-start; gap: 10px; min-width: 0; flex: 1 1 auto; }
     .im-chat-avatar {
       width: 28px; height: 28px; border-radius: 6px;
       flex-shrink: 0; overflow: hidden;
@@ -743,7 +743,10 @@
     /* 头像图占满容器：无此规则 img 按原尺寸渲染，会在小容器里被裁成局部放大 */
     .im-chat-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
     /* ---------- 聊天头：标题行（人数 + 分类 chip） ---------- */
-    .im-chat-title-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .im-chat-title-row {
+      display: flex; align-items: center; align-content: center; flex-wrap: wrap;
+      column-gap: 8px; row-gap: 3px; min-width: 0;
+    }
     .im-chat-count {
       display: inline-flex; align-items: center; gap: 2px;
       font-size: 12px; color: var(--im-text-3); font-weight: 400; flex-shrink: 0;
@@ -988,20 +991,22 @@
       font-family: var(--im-font);
     }
     .im-chat-header {
-      height: 52px; flex-shrink: 0;
+      height: auto; min-height: 52px; flex-shrink: 0;
       background: #F5F7FB;
       border-bottom: 1px solid var(--im-border);
-      display: flex; align-items: center;
+      display: flex; align-items: flex-start;
       justify-content: space-between;
-      padding: 0 20px; gap: 12px;
+      padding: 8px 20px; gap: 12px;
     }
-    .im-chat-titles { min-width: 0; }
+    .im-chat-titles { min-width: 0; flex: 1 1 auto; }
     .im-chat-title {
       font-size: 16px; font-weight: 600; color: var(--im-text);
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      flex: 1 1 360px; min-width: 180px; line-height: 1.4;
+      white-space: normal; overflow: visible; text-overflow: clip;
+      overflow-wrap: anywhere; word-break: break-word;
     }
     .im-chat-sub { font-size: 12px; color: var(--im-text-3); margin-top: 1px; }
-    .im-chat-actions { display: flex; gap: 4px; flex-shrink: 0; }
+    .im-chat-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; padding-top: 2px; }
     .im-chat-body {
       flex: 1; overflow-y: auto;
       padding: 20px 24px;
@@ -17004,7 +17009,7 @@ ${item.label}`;
       }
     }
     function bootstrap() {
-      console.info(`[nodeloc-im] v${"0.3.0"} loaded, skin=${SKIN_ID}`);
+      console.info(`[nodeloc-im] v${"0.3.1"} loaded, skin=${SKIN_ID}`);
       if (!document.documentElement) {
         setTimeout(bootstrap, 0);
         return;
