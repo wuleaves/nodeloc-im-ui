@@ -2,7 +2,7 @@
 // @name         NodeLoc · IM 外观（钉钉 / 飞书 / 企业微信）
 // @namespace    https://www.nodeloc.com/
 // @author       czm15053, NodeLoc adaptation
-// @version      0.5.5
+// @version      0.5.6
 // @description  NodeLoc 三栏 IM 外观：节点/主题列表、帖子流、回复、搜索、用户与通知，支持三套皮肤和明暗主题。
 // @match        https://www.nodeloc.com/*
 // @noframes
@@ -9462,6 +9462,7 @@ html.im-theme {
       if (!widget) continue;
       const clone = widget.cloneNode(true);
       clone.classList.add("im-lottery-widget");
+      clone.querySelectorAll(".lottery-inline-dialog").forEach((el) => el.remove());
       clone.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
       clone.querySelectorAll(".lottery-buy-btn").forEach((button) => {
         button.type = "button";
@@ -9472,6 +9473,48 @@ html.im-theme {
       card.dataset.imLotteryEnhanced = "1";
       card.replaceChildren(clone);
     }
+  }
+  function mountLotteryPurchaseDialog(nativePost, target) {
+    var _a2;
+    const nativeDialog = nativePost == null ? void 0 : nativePost.querySelector(".lottery-inline-dialog");
+    if (!nativeDialog || !target) return false;
+    (_a2 = target.querySelector(".im-lottery-inline-dialog")) == null ? void 0 : _a2.remove();
+    const dialog = nativeDialog.cloneNode(true);
+    dialog.classList.add("im-lottery-inline-dialog");
+    dialog.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
+    dialog.addEventListener("click", (event) => {
+      const button = event.target.closest("button");
+      if (!button || !dialog.contains(button)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      let nativeButton2 = null;
+      let closeAfterClick = false;
+      if (button.classList.contains("lottery-qty-stepper__btn")) {
+        const stepButtons = [...dialog.querySelectorAll(".lottery-qty-stepper__btn")];
+        const nativeStepButtons = [...nativeDialog.querySelectorAll(".lottery-qty-stepper__btn")];
+        nativeButton2 = nativeStepButtons[stepButtons.indexOf(button)];
+      } else if (button.classList.contains("lottery-random-btn")) {
+        nativeButton2 = nativeDialog.querySelector(".lottery-random-btn");
+      } else if (button.classList.contains("btn-primary")) {
+        nativeButton2 = nativeDialog.querySelector(".lottery-inline-dialog__footer .btn-primary");
+      } else {
+        nativeButton2 = nativeDialog.querySelector(".lottery-inline-dialog__footer .btn-flat:not(.lottery-random-btn)");
+        closeAfterClick = true;
+      }
+      nativeButton2 == null ? void 0 : nativeButton2.click();
+      setTimeout(() => {
+        var _a3;
+        const value = (_a3 = nativeDialog.querySelector(".lottery-qty-stepper__val")) == null ? void 0 : _a3.textContent;
+        const shownValue = dialog.querySelector(".lottery-qty-stepper__val");
+        if (value && shownValue) shownValue.textContent = value;
+        if (!nativeDialog.isConnected || closeAfterClick) {
+          dialog.remove();
+        }
+      }, 80);
+    });
+    target.appendChild(dialog);
+    dialog.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    return true;
   }
   function enhanceVideoPlaceholders(root2) {
     if (!root2) return;
@@ -9828,17 +9871,18 @@ html.im-theme {
           );
           const nativeTrigger = nativePost == null ? void 0 : nativePost.querySelector(pluginAction === "reward" ? ".discourse-rewards-add-trigger" : pluginAction === "lottery" ? ".lottery-buy-btn" : pluginAction === "vote-up" ? ".discourse-vote-up-trigger" : ".discourse-vote-down-trigger");
           if (nativeTrigger) {
-            nativeTrigger.click();
             if (pluginAction === "lottery") {
-              setTimeout(() => {
-                const dialog = nativePost.querySelector(".lottery-inline-dialog");
-                const target = nativePlugin.closest(".im-lottery-widget");
-                if (dialog && target) {
-                  dialog.classList.add("im-lottery-inline-dialog");
-                  target.appendChild(dialog);
-                }
-              }, 0);
+              const target = nativePlugin.closest(".im-lottery-widget");
+              if (mountLotteryPurchaseDialog(nativePost, target)) return;
+              nativeTrigger.click();
+              let attempts = 0;
+              const waitForDialog = setInterval(() => {
+                attempts += 1;
+                if (mountLotteryPurchaseDialog(nativePost, target) || attempts >= 20) clearInterval(waitForDialog);
+              }, 50);
+              return;
             }
+            nativeTrigger.click();
             if (pluginAction.startsWith("vote-")) {
               setTimeout(() => {
                 var _a3, _b2, _c, _d;
@@ -17613,7 +17657,7 @@ ${item.label}`;
       }
     }
     function bootstrap() {
-      console.info(`[nodeloc-im] v${"0.5.5"} loaded, skin=${SKIN_ID}`);
+      console.info(`[nodeloc-im] v${"0.5.6"} loaded, skin=${SKIN_ID}`);
       if (!document.documentElement) {
         setTimeout(bootstrap, 0);
         return;
