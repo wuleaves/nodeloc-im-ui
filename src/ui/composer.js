@@ -6,9 +6,9 @@ import {
   discourseRequire, getComposerService, getEmberOwner, getTopicModel,
   findLoadedPost, isComposerOpen, safeLookup,
 } from "../bridge/discourse.js";
-import { getCurrentUsername } from "../bridge/user.js";
+import { getCurrentUsername, normalizeUsername } from "../bridge/user.js";
 import { LOCK_CLASS, COMPOSE_PREVIEW_KEY } from "../config/constants.js";
-import { syncNewPostsFromDom } from "./chat-panel.js";
+import { fetchLatestNewPosts, syncNewPostsFromDom } from "./chat-panel.js";
 import { chatHooks } from "./hooks.js";
 import { mdToHtml, registerUploadUrl } from "./markdown-lite.js";
 
@@ -806,30 +806,41 @@ async function submitComposer() {
   updateComposeSendState();
   setComposeStatus("正在发送…", "busy");
   const replyTo = composerState.replyToPostNumber;
+  const beforeLastNumber = chatState.renderedLastNumber;
   try {
     const post = await submitReplyViaApi(raw, replyTo);
     completeComposerSubmission(input, post);
   } catch (apiError) {
-    // 不再自动打开被 IM 布局隐藏的原生 composer，否则会遮挡页面并造成假死。
-    setComposeStatus(`发送失败：${apiError.message || "未知错误"}`, "error");
+    // NodeLoc 某些插件会在帖子已经创建后仍返回通用错误；先核对服务端最新楼层。
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const newPosts = await fetchLatestNewPosts(chatState.topicId);
+    const myName = normalizeUsername(getCurrentUsername());
+    const confirmed = newPosts.find((candidate) =>
+      Number(candidate.post_number) > beforeLastNumber &&
+      normalizeUsername(candidate.username) === myName
+    );
+    const confirmedInView = [...document.querySelectorAll(".im-chat-body .im-msg[data-post-number]")].find((message) =>
+      Number(message.dataset.postNumber) > beforeLastNumber &&
+      normalizeUsername(message.dataset.username) === myName
+    );
+    if (confirmed || confirmedInView) completeComposerSubmission(input, confirmed || null);
+    else setComposeStatus(`发送失败：${apiError.message || "未知错误"}`, "error");
   } finally {
     composerState.submitting = false;
     updateComposeSendState();
   }
 }
-function completeComposerSubmission(input, post) {
+function completeComposerSubmission(input, _post) {
   mdClear(input);
   composerState.replyToPostNumber = null;
   hideTargetedReply();
   setComposeStatus("发送成功", "success");
-  if (post && (post.post_number || post.postNumber)) {
-    chatState.renderedLastNumber = Math.max(
-      chatState.renderedLastNumber,
-      Number(post.post_number || post.postNumber)
-    );
-  }
+  // 不提前推进 renderedLastNumber，否则随后拉取会把刚发布的楼层过滤掉。
+  const topicId = chatState.topicId;
+  setTimeout(() => fetchLatestNewPosts(topicId), 120);
   setTimeout(() => syncNewPostsFromDom(), 400);
-  setTimeout(() => syncNewPostsFromDom(), 1200);
+  setTimeout(() => fetchLatestNewPosts(topicId), 900);
+  setTimeout(() => syncNewPostsFromDom(), 1400);
 }
 function showTargetedReply(postNumber) {
   const { input, target } = composeUi();

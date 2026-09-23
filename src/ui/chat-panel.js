@@ -533,15 +533,15 @@ let inFlightNewPostsFetch = false;
 let currentSubscribedTopicChannel = null;
 let chatRealtimeBound = false;
 
-async function fetchLatestNewPosts(topicId) {
-  if (!topicId || chatState.topicId !== topicId || inFlightNewPostsFetch) return;
+export async function fetchLatestNewPosts(topicId) {
+  if (!topicId || chatState.topicId !== topicId || inFlightNewPostsFetch) return [];
   const body = document.querySelector(".im-chat-body");
-  if (!body || body.querySelector(".im-chat-loading")) return;
+  if (!body || body.querySelector(".im-chat-loading")) return [];
 
   inFlightNewPostsFetch = true;
   try {
     const data = await api(`/t/${topicId}/last.json?track_visit=false`);
-    if (chatState.topicId !== topicId) return;
+    if (chatState.topicId !== topicId) return [];
 
     const posts = (data.post_stream && data.post_stream.posts) || [];
     const stream = (data.post_stream && data.post_stream.stream) || posts.map((p) => p.id);
@@ -556,7 +556,7 @@ async function fetchLatestNewPosts(topicId) {
       const myName = getCurrentUsername();
 
       body.insertAdjacentHTML("beforeend", renderBubbles(newPosts, myName));
-      chatHooks.enhancePolls?.(body);
+      afterChatPaint(body);
 
       chatState.renderedLastNumber = Math.max(
         chatState.renderedLastNumber,
@@ -590,8 +590,10 @@ async function fetchLatestNewPosts(topicId) {
         }
       }
     }
+    return newPosts;
   } catch {
     // 忽略临时网络波动
+    return [];
   } finally {
     inFlightNewPostsFetch = false;
   }

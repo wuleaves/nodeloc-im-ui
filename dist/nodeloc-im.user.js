@@ -2,7 +2,7 @@
 // @name         NodeLoc · IM 外观（钉钉 / 飞书 / 企业微信）
 // @namespace    https://www.nodeloc.com/
 // @author       czm15053, NodeLoc adaptation
-// @version      0.5.9
+// @version      0.6.0
 // @description  NodeLoc 三栏 IM 外观：节点/主题列表、帖子流、回复、搜索、用户与通知，支持三套皮肤和明暗主题。
 // @match        https://www.nodeloc.com/*
 // @noframes
@@ -9918,14 +9918,13 @@ html.im-theme {
   let currentSubscribedTopicChannel = null;
   let chatRealtimeBound = false;
   async function fetchLatestNewPosts(topicId) {
-    var _a2;
-    if (!topicId || chatState.topicId !== topicId || inFlightNewPostsFetch) return;
+    if (!topicId || chatState.topicId !== topicId || inFlightNewPostsFetch) return [];
     const body = document.querySelector(".im-chat-body");
-    if (!body || body.querySelector(".im-chat-loading")) return;
+    if (!body || body.querySelector(".im-chat-loading")) return [];
     inFlightNewPostsFetch = true;
     try {
       const data = await api(`/t/${topicId}/last.json?track_visit=false`);
-      if (chatState.topicId !== topicId) return;
+      if (chatState.topicId !== topicId) return [];
       const posts = data.post_stream && data.post_stream.posts || [];
       const stream = data.post_stream && data.post_stream.stream || posts.map((p) => p.id);
       if (stream.length) chatState.stream = stream;
@@ -9936,7 +9935,7 @@ html.im-theme {
         const isNearBottom = body.scrollHeight - body.scrollTop - body.clientHeight < 180;
         const myName = getCurrentUsername();
         body.insertAdjacentHTML("beforeend", renderBubbles(newPosts, myName));
-        (_a2 = chatHooks.enhancePolls) == null ? void 0 : _a2.call(chatHooks, body);
+        afterChatPaint(body);
         chatState.renderedLastNumber = Math.max(
           chatState.renderedLastNumber,
           ...newPosts.map((p) => p.post_number || 0)
@@ -9966,7 +9965,9 @@ html.im-theme {
           }
         }
       }
+      return newPosts;
     } catch {
+      return [];
     } finally {
       inFlightNewPostsFetch = false;
     }
@@ -11606,29 +11607,37 @@ ${data.raw}
     updateComposeSendState();
     setComposeStatus("正在发送…", "busy");
     const replyTo = composerState.replyToPostNumber;
+    const beforeLastNumber = chatState.renderedLastNumber;
     try {
       const post = await submitReplyViaApi(raw, replyTo);
       completeComposerSubmission(input, post);
     } catch (apiError) {
-      setComposeStatus(`发送失败：${apiError.message || "未知错误"}`, "error");
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      const newPosts = await fetchLatestNewPosts(chatState.topicId);
+      const myName = normalizeUsername(getCurrentUsername());
+      const confirmed = newPosts.find(
+        (candidate) => Number(candidate.post_number) > beforeLastNumber && normalizeUsername(candidate.username) === myName
+      );
+      const confirmedInView = [...document.querySelectorAll(".im-chat-body .im-msg[data-post-number]")].find(
+        (message) => Number(message.dataset.postNumber) > beforeLastNumber && normalizeUsername(message.dataset.username) === myName
+      );
+      if (confirmed || confirmedInView) completeComposerSubmission(input);
+      else setComposeStatus(`发送失败：${apiError.message || "未知错误"}`, "error");
     } finally {
       composerState.submitting = false;
       updateComposeSendState();
     }
   }
-  function completeComposerSubmission(input, post) {
+  function completeComposerSubmission(input, _post) {
     mdClear(input);
     composerState.replyToPostNumber = null;
     hideTargetedReply();
     setComposeStatus("发送成功", "success");
-    if (post && (post.post_number || post.postNumber)) {
-      chatState.renderedLastNumber = Math.max(
-        chatState.renderedLastNumber,
-        Number(post.post_number || post.postNumber)
-      );
-    }
+    const topicId = chatState.topicId;
+    setTimeout(() => fetchLatestNewPosts(topicId), 120);
     setTimeout(() => syncNewPostsFromDom(), 400);
-    setTimeout(() => syncNewPostsFromDom(), 1200);
+    setTimeout(() => fetchLatestNewPosts(topicId), 900);
+    setTimeout(() => syncNewPostsFromDom(), 1400);
   }
   function showTargetedReply(postNumber) {
     var _a2, _b2;
@@ -17340,7 +17349,7 @@ ${item.label}`;
       }
     }
     function bootstrap() {
-      console.info(`[nodeloc-im] v${"0.5.9"} loaded, skin=${SKIN_ID}`);
+      console.info(`[nodeloc-im] v${"0.6.0"} loaded, skin=${SKIN_ID}`);
       if (!document.documentElement) {
         setTimeout(bootstrap, 0);
         return;
