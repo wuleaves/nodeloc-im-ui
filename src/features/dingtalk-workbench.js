@@ -36,6 +36,31 @@ function dedupe(items) {
   });
 }
 
+/** 读取原生侧栏入口自己的图标。优先图片，其次保留 Discourse SVG sprite 引用。 */
+function readNativeIcon(link) {
+  const img = link.querySelector(".sidebar-section-link-prefix img, img.sidebar-section-link-prefix, img");
+  if (img) {
+    const src = safeHref(img.currentSrc || img.getAttribute("src"));
+    if (src) return `<img src="${escapeHtml(src)}" alt="">`;
+  }
+  const svg = link.querySelector(".sidebar-section-link-prefix svg, svg.prefix-icon, svg");
+  if (!svg) return "";
+  const clone = svg.cloneNode(true);
+  clone.querySelectorAll("script, style, foreignObject").forEach((node) => node.remove());
+  for (const node of [clone, ...clone.querySelectorAll("*")]) {
+    for (const attr of [...node.attributes]) {
+      if (/^on/i.test(attr.name)) node.removeAttribute(attr.name);
+      if ((attr.name === "href" || attr.name === "xlink:href") && !attr.value.startsWith("#")) {
+        node.removeAttribute(attr.name);
+      }
+    }
+  }
+  clone.removeAttribute("style");
+  clone.setAttribute("aria-hidden", "true");
+  clone.setAttribute("focusable", "false");
+  return clone.outerHTML;
+}
+
 async function expandNativeSections() {
   const buttons = SECTION_SPECS.flatMap((spec) => spec.controls)
     .map((id) => document.querySelector(`.sidebar-section-header[aria-controls="${id}"]`))
@@ -54,19 +79,20 @@ function readNativeSection(spec) {
     for (const link of root.querySelectorAll("a[href]")) {
       const label = (link.textContent || link.getAttribute("aria-label") || "").replace(/\s+/g, " ").trim();
       const href = safeHref(link.getAttribute("href"));
-      if (label && href) items.push({ label, href });
+      if (label && href) items.push({ label, href, iconHtml: readNativeIcon(link) });
     }
   }
   const nativeItems = dedupe(items);
   if (nativeItems.length) return nativeItems;
-  return spec.fallback.map(([label, href]) => ({ label, href }));
+  return spec.fallback.map(([label, href]) => ({ label, href, iconHtml: "" }));
 }
 
 function appHtml(item, spec, index) {
   const [bg, color] = APP_COLORS[index % APP_COLORS.length];
-  const icon = ICONS[spec.icon] || ICONS.apps;
+  const icon = item.iconHtml || ICONS[spec.icon] || ICONS.apps;
+  const original = item.iconHtml ? " has-original-icon" : "";
   return `<button type="button" class="im-dd-app" data-href="${escapeHtml(item.href)}" data-label="${escapeHtml(item.label.toLowerCase())}">
-    <span class="im-dd-app-icon" style="--app-bg:${bg};--app-color:${color}">${icon}</span>
+    <span class="im-dd-app-icon${original}" style="--app-bg:${bg};--app-color:${color}">${icon}</span>
     <span class="im-dd-app-name">${escapeHtml(item.label)}</span>
   </button>`;
 }

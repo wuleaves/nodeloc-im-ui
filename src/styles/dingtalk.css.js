@@ -473,15 +473,27 @@ export const CSS_DD = String.raw`
     .im-dd-workbench-search-wrap {
       width: min(360px, 38vw); height: 36px; margin-left: auto;
       display: flex; align-items: center; gap: 8px;
-      padding: 0 13px; border-radius: 18px;
+      padding: 0 13px; border: 1px solid transparent; border-radius: 18px;
       background: var(--im-hover); color: var(--im-text-3);
+      transition: border-color .15s, background .15s, box-shadow .15s;
+    }
+    .im-dd-workbench-search-wrap:focus-within {
+      border-color: var(--im-blue); background: var(--im-bg);
+      box-shadow: 0 0 0 2px rgba(26,135,255,.12);
     }
     .im-dd-workbench-search-wrap svg { width: 17px; height: 17px; flex-shrink: 0; }
     .im-dd-workbench-search {
-      flex: 1; min-width: 0; height: 100%; margin: 0; padding: 0;
-      border: 0; outline: 0; background: transparent;
-      color: var(--im-text); font: inherit; font-size: 13px;
+      appearance: none !important; -webkit-appearance: none !important;
+      flex: 1 !important; min-width: 0 !important; width: auto !important; height: 100% !important;
+      margin: 0 !important; padding: 0 !important;
+      border: 0 !important; border-radius: 0 !important; outline: 0 !important;
+      box-shadow: none !important; background: transparent !important;
+      color: var(--im-text) !important; font: inherit !important; font-size: 13px !important;
     }
+    .im-dd-workbench-search:focus,
+    .im-dd-workbench-search:focus-visible { border: 0 !important; outline: 0 !important; box-shadow: none !important; }
+    .im-dd-workbench-search::-webkit-search-decoration,
+    .im-dd-workbench-search::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
     .im-dd-workbench-close {
       width: 34px; height: 34px; padding: 0; border: 0; border-radius: 9px;
       background: transparent; color: var(--im-text-3); cursor: pointer;
@@ -512,9 +524,12 @@ export const CSS_DD = String.raw`
       width: 58px; height: 58px; border-radius: 14px;
       display: grid; place-items: center;
       color: var(--app-color); background: var(--app-bg);
-      box-shadow: inset 0 0 0 1px rgba(31,35,41,.035);
+      overflow: hidden;
+      box-shadow: inset 0 0 0 1px rgba(31,35,41,.055), 0 1px 2px rgba(31,35,41,.04);
     }
     .im-dd-app-icon svg { width: 30px; height: 30px; }
+    .im-dd-app-icon img { display: block; width: 100%; height: 100%; object-fit: cover; }
+    .im-dd-app-icon.has-original-icon svg { width: 29px; height: 29px; color: var(--app-color); }
     .im-dd-app-name {
       width: 100%; min-height: 34px;
       display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;

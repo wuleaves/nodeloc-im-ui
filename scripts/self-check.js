@@ -84,6 +84,13 @@ for (const marker of ["function enhanceVideoPlaceholders(", "video-placeholder-c
   }
 }
 
+for (const marker of ["function readNativeIcon(", "has-original-icon", "im-dd-workbench-search-wrap:focus-within"]) {
+  if (!output.includes(marker)) {
+    console.error(`missing workbench UI marker: ${marker}`);
+    ok = false;
+  }
+}
+
 if (ok) {
   console.log("self-check passed");
   process.exit(0);

@@ -2,7 +2,7 @@
 // @name         NodeLoc · IM 外观（钉钉 / 飞书 / 企业微信）
 // @namespace    https://www.nodeloc.com/
 // @author       czm15053, NodeLoc adaptation
-// @version      0.3.2
+// @version      0.3.3
 // @description  NodeLoc 三栏 IM 外观：节点/主题列表、帖子流、回复、搜索、用户与通知，支持三套皮肤和明暗主题。
 // @match        https://www.nodeloc.com/*
 // @noframes
@@ -652,15 +652,27 @@
     .im-dd-workbench-search-wrap {
       width: min(360px, 38vw); height: 36px; margin-left: auto;
       display: flex; align-items: center; gap: 8px;
-      padding: 0 13px; border-radius: 18px;
+      padding: 0 13px; border: 1px solid transparent; border-radius: 18px;
       background: var(--im-hover); color: var(--im-text-3);
+      transition: border-color .15s, background .15s, box-shadow .15s;
+    }
+    .im-dd-workbench-search-wrap:focus-within {
+      border-color: var(--im-blue); background: var(--im-bg);
+      box-shadow: 0 0 0 2px rgba(26,135,255,.12);
     }
     .im-dd-workbench-search-wrap svg { width: 17px; height: 17px; flex-shrink: 0; }
     .im-dd-workbench-search {
-      flex: 1; min-width: 0; height: 100%; margin: 0; padding: 0;
-      border: 0; outline: 0; background: transparent;
-      color: var(--im-text); font: inherit; font-size: 13px;
+      appearance: none !important; -webkit-appearance: none !important;
+      flex: 1 !important; min-width: 0 !important; width: auto !important; height: 100% !important;
+      margin: 0 !important; padding: 0 !important;
+      border: 0 !important; border-radius: 0 !important; outline: 0 !important;
+      box-shadow: none !important; background: transparent !important;
+      color: var(--im-text) !important; font: inherit !important; font-size: 13px !important;
     }
+    .im-dd-workbench-search:focus,
+    .im-dd-workbench-search:focus-visible { border: 0 !important; outline: 0 !important; box-shadow: none !important; }
+    .im-dd-workbench-search::-webkit-search-decoration,
+    .im-dd-workbench-search::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
     .im-dd-workbench-close {
       width: 34px; height: 34px; padding: 0; border: 0; border-radius: 9px;
       background: transparent; color: var(--im-text-3); cursor: pointer;
@@ -691,9 +703,12 @@
       width: 58px; height: 58px; border-radius: 14px;
       display: grid; place-items: center;
       color: var(--app-color); background: var(--app-bg);
-      box-shadow: inset 0 0 0 1px rgba(31,35,41,.035);
+      overflow: hidden;
+      box-shadow: inset 0 0 0 1px rgba(31,35,41,.055), 0 1px 2px rgba(31,35,41,.04);
     }
     .im-dd-app-icon svg { width: 30px; height: 30px; }
+    .im-dd-app-icon img { display: block; width: 100%; height: 100%; object-fit: cover; }
+    .im-dd-app-icon.has-original-icon svg { width: 29px; height: 29px; color: var(--app-color); }
     .im-dd-app-name {
       width: 100%; min-height: 34px;
       display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
@@ -12510,6 +12525,29 @@ ${item.label}`;
       return true;
     });
   }
+  function readNativeIcon(link) {
+    const img = link.querySelector(".sidebar-section-link-prefix img, img.sidebar-section-link-prefix, img");
+    if (img) {
+      const src = safeHref(img.currentSrc || img.getAttribute("src"));
+      if (src) return `<img src="${escapeHtml(src)}" alt="">`;
+    }
+    const svg = link.querySelector(".sidebar-section-link-prefix svg, svg.prefix-icon, svg");
+    if (!svg) return "";
+    const clone = svg.cloneNode(true);
+    clone.querySelectorAll("script, style, foreignObject").forEach((node) => node.remove());
+    for (const node of [clone, ...clone.querySelectorAll("*")]) {
+      for (const attr of [...node.attributes]) {
+        if (/^on/i.test(attr.name)) node.removeAttribute(attr.name);
+        if ((attr.name === "href" || attr.name === "xlink:href") && !attr.value.startsWith("#")) {
+          node.removeAttribute(attr.name);
+        }
+      }
+    }
+    clone.removeAttribute("style");
+    clone.setAttribute("aria-hidden", "true");
+    clone.setAttribute("focusable", "false");
+    return clone.outerHTML;
+  }
   async function expandNativeSections() {
     const buttons = SECTION_SPECS.flatMap((spec) => spec.controls).map((id) => document.querySelector(`.sidebar-section-header[aria-controls="${id}"]`)).filter(Boolean);
     for (const button of buttons) {
@@ -12525,18 +12563,19 @@ ${item.label}`;
       for (const link of root2.querySelectorAll("a[href]")) {
         const label = (link.textContent || link.getAttribute("aria-label") || "").replace(/\s+/g, " ").trim();
         const href = safeHref(link.getAttribute("href"));
-        if (label && href) items.push({ label, href });
+        if (label && href) items.push({ label, href, iconHtml: readNativeIcon(link) });
       }
     }
     const nativeItems = dedupe(items);
     if (nativeItems.length) return nativeItems;
-    return spec.fallback.map(([label, href]) => ({ label, href }));
+    return spec.fallback.map(([label, href]) => ({ label, href, iconHtml: "" }));
   }
   function appHtml(item, spec, index) {
     const [bg, color] = APP_COLORS[index % APP_COLORS.length];
-    const icon = ICONS[spec.icon] || ICONS.apps;
+    const icon = item.iconHtml || ICONS[spec.icon] || ICONS.apps;
+    const original = item.iconHtml ? " has-original-icon" : "";
     return `<button type="button" class="im-dd-app" data-href="${escapeHtml(item.href)}" data-label="${escapeHtml(item.label.toLowerCase())}">
-    <span class="im-dd-app-icon" style="--app-bg:${bg};--app-color:${color}">${icon}</span>
+    <span class="im-dd-app-icon${original}" style="--app-bg:${bg};--app-color:${color}">${icon}</span>
     <span class="im-dd-app-name">${escapeHtml(item.label)}</span>
   </button>`;
   }
@@ -17084,7 +17123,7 @@ ${item.label}`;
       }
     }
     function bootstrap() {
-      console.info(`[nodeloc-im] v${"0.3.2"} loaded, skin=${SKIN_ID}`);
+      console.info(`[nodeloc-im] v${"0.3.3"} loaded, skin=${SKIN_ID}`);
       if (!document.documentElement) {
         setTimeout(bootstrap, 0);
         return;
