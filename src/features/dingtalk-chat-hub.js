@@ -2,6 +2,7 @@ const HUB_CLASS = "im-chat-hub-open";
 let controlsBound = false;
 let drawerObserver = null;
 let dragging = null;
+let resizing = null;
 let drawerGoneTimer = null;
 
 const WINDOW_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 9h8M8 13h5"/></svg>`;
@@ -50,23 +51,6 @@ function toggleChatWindow(drawer) {
   syncWindowButton(drawer);
 }
 
-function openDetachedChatWindow(drawer) {
-  const channelHref = drawer.querySelector(".c-navbar__channel-title[href]")?.getAttribute("href") || "/chat";
-  const url = new URL(channelHref, location.origin);
-  url.searchParams.set("nodeloc_im_chat_popup", "1");
-  const popup = window.open(
-    url.pathname + url.search,
-    "nodeloc-im-chat-window",
-    "popup=yes,width=760,height=720,resizable=yes,scrollbars=yes"
-  );
-  if (!popup) {
-    toggleChatWindow(drawer); // 浏览器拦截弹窗时保留页内小窗降级
-    return;
-  }
-  popup.focus();
-  closeDingtalkChatHub();
-}
-
 function beginDrag(event, drawer) {
   if (!document.documentElement.classList.contains("im-chat-hub-windowed")) return;
   if (event.button !== 0 || event.target.closest("button, a, input, textarea, [role='button']")) return;
@@ -76,17 +60,40 @@ function beginDrag(event, drawer) {
   event.preventDefault();
 }
 function moveDrag(event) {
+  if (resizing) {
+    const width = Math.max(380, Math.min(window.innerWidth - 16, resizing.width + event.clientX - resizing.x));
+    const height = Math.max(340, Math.min(window.innerHeight - 56, resizing.height + event.clientY - resizing.y));
+    resizing.drawer.style.setProperty("--im-chat-window-w", `${width}px`);
+    resizing.drawer.style.setProperty("--im-chat-window-h", `${height}px`);
+    return;
+  }
   if (dragging) setWindowPosition(dragging.drawer, event.clientX - dragging.dx, event.clientY - dragging.dy);
 }
 function endDrag() {
   dragging?.drawer.classList.remove("is-dragging");
+  resizing?.drawer.classList.remove("is-resizing");
   dragging = null;
+  resizing = null;
+}
+function beginResize(event, drawer) {
+  if (!document.documentElement.classList.contains("im-chat-hub-windowed")) return;
+  const rect = drawer.getBoundingClientRect();
+  resizing = { drawer, x: event.clientX, y: event.clientY, width: rect.width, height: rect.height };
+  drawer.classList.add("is-resizing");
+  event.preventDefault();
+  event.stopPropagation();
 }
 
 function decorateDrawer(drawer) {
   drawer.classList.add("im-dingtalk-chat-hub");
   drawer.setAttribute("aria-label", "NodeLoc 聊天");
   document.documentElement.classList.add(HUB_CLASS);
+  if (!drawer.querySelector(".im-chat-resize-handle")) {
+    const handle = document.createElement("span");
+    handle.className = "im-chat-resize-handle";
+    handle.setAttribute("aria-hidden", "true");
+    drawer.appendChild(handle);
+  }
   syncWindowButton(drawer);
   document.querySelectorAll(".im-rail-item[data-rail-key]").forEach((item) => {
     item.classList.toggle("active", item.dataset.railKey === "messages");
@@ -98,8 +105,7 @@ function decorateDrawer(drawer) {
       if (current) {
         clearTimeout(drawerGoneTimer);
         drawerGoneTimer = null;
-        if (!current.classList.contains("im-dingtalk-chat-hub")) decorateDrawer(current);
-        else syncWindowButton(current);
+        decorateDrawer(current); // 原生切换频道可能重建按钮/移除缩放柄，逐次补齐
         return;
       }
       clearTimeout(drawerGoneTimer);
@@ -121,7 +127,7 @@ function bindControls() {
     if (windowToggle) {
       event.preventDefault(); event.stopPropagation(); event.stopImmediatePropagation?.();
       const current = nativeDrawer();
-      if (current) openDetachedChatWindow(current);
+      if (current) toggleChatWindow(current);
       return;
     }
       const close = event.target.closest(
@@ -133,6 +139,12 @@ function bindControls() {
     if (close) setTimeout(() => closeDingtalkChatHub({ closeNative: false }), 0);
   }, true);
   document.addEventListener("pointerdown", (event) => {
+    const resizeHandle = event.target.closest(".im-dingtalk-chat-hub .im-chat-resize-handle");
+    const resizeDrawer = nativeDrawer();
+    if (resizeHandle && resizeDrawer) {
+      beginResize(event, resizeDrawer);
+      return;
+    }
     const navbar = event.target.closest(".im-dingtalk-chat-hub .c-navbar");
     const current = nativeDrawer();
     if (navbar && current) beginDrag(event, current);
@@ -162,6 +174,8 @@ export function closeDingtalkChatHub({ closeNative = true } = {}) {
   drawer?.classList.remove("im-dingtalk-chat-hub");
   drawer?.style.removeProperty("--im-chat-window-x");
   drawer?.style.removeProperty("--im-chat-window-y");
+  drawer?.style.removeProperty("--im-chat-window-w");
+  drawer?.style.removeProperty("--im-chat-window-h");
   document.querySelector('.im-rail-item[data-rail-key="messages"]')?.classList.remove("active");
   document.querySelector('.im-rail-item[data-rail-key="chat"]')?.classList.add("active");
   document.dispatchEvent(new CustomEvent("im-chat-hub-close"));
@@ -174,4 +188,9 @@ export function openDingtalkChatHub() {
   if (drawer) return decorateDrawer(drawer);
   nativeChatToggle()?.click();
   waitForDrawer();
+}
+
+export function isDingtalkChatWindowed() {
+  return document.documentElement.classList.contains(HUB_CLASS) &&
+    document.documentElement.classList.contains("im-chat-hub-windowed");
 }

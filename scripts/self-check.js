@@ -105,7 +105,7 @@ for (const marker of ["function toggleChatWindow(", "im-chat-hub-windowed", "小
   }
 }
 
-for (const marker of ["function openDetachedChatWindow(", "nodeloc_im_chat_popup", "resizable=yes"]) {
+for (const marker of ["function beginResize(", "im-chat-resize-handle", "--im-chat-window-w"]) {
   if (!output.includes(marker)) {
     console.error(`missing detached Chat window marker: ${marker}`);
     ok = false;

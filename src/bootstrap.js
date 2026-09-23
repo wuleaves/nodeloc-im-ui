@@ -66,11 +66,6 @@ import {
 } from "./ui/chat-panel.js";
 import { resetRailToChat, activeRailKey } from "./ui/list-sources.js";
 export function run() {
-  // 独立 Chat 小窗使用 NodeLoc 原生全页 Chat，不注入三栏皮肤；窗口可由系统自由缩放/跨屏移动。
-  if (location.pathname.startsWith("/chat") && new URLSearchParams(location.search).get("nodeloc_im_chat_popup") === "1") {
-    document.documentElement.classList.add("im-native-chat-popup");
-    return;
-  }
   migratePrefs();
   onColorThemeChange(syncDarkModeToggle);
   onRailRefresh(syncRail);

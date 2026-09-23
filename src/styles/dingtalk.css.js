@@ -598,8 +598,8 @@ export const CSS_DD = String.raw`
       position: fixed !important; inset: auto !important;
       left: var(--im-chat-window-x, calc(100vw - 744px)) !important;
       top: var(--im-chat-window-y, 64px) !important;
-      width: min(720px, calc(100vw - 32px)) !important;
-      height: min(680px, calc(100vh - 88px)) !important;
+      width: min(var(--im-chat-window-w, 720px), calc(100vw - 16px)) !important;
+      height: min(var(--im-chat-window-h, 680px), calc(100vh - 56px)) !important;
       border: 1px solid var(--im-border) !important; border-radius: 12px !important;
       box-shadow: 0 18px 55px rgba(31,35,41,.24) !important; pointer-events: auto !important;
     }
@@ -609,7 +609,15 @@ export const CSS_DD = String.raw`
     .__ROOT_CLASS__.im-chat-hub-windowed .im-dingtalk-chat-hub.is-dragging {
       transition: none !important; box-shadow: 0 22px 65px rgba(31,35,41,.32) !important;
     }
+    .__ROOT_CLASS__.im-chat-hub-windowed .im-dingtalk-chat-hub.is-resizing { transition: none !important; }
     .__ROOT_CLASS__.im-chat-hub-windowed .im-dingtalk-chat-hub.is-dragging .c-navbar { cursor: grabbing !important; }
+    .__ROOT_CLASS__ .im-chat-resize-handle { display: none; }
+    .__ROOT_CLASS__.im-chat-hub-windowed .im-chat-resize-handle {
+      display: block; position: absolute; right: 0; bottom: 0; width: 22px; height: 22px;
+      z-index: 20; cursor: nwse-resize; touch-action: none;
+      background: linear-gradient(135deg, transparent 48%, var(--im-border-strong) 49%, var(--im-border-strong) 56%, transparent 57%, transparent 68%, var(--im-text-3) 69%, var(--im-text-3) 76%, transparent 77%);
+      border-radius: 0 0 11px 0;
+    }
     .__ROOT_CLASS__.im-chat-hub-open .im-list-panel,
     .__ROOT_CLASS__.im-chat-hub-open .im-chat-panel,
     .__ROOT_CLASS__.im-chat-hub-open .im-strip,
