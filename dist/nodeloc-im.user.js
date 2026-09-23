@@ -2,7 +2,7 @@
 // @name         NodeLoc · IM 外观（钉钉 / 飞书 / 企业微信）
 // @namespace    https://www.nodeloc.com/
 // @author       czm15053, NodeLoc adaptation
-// @version      0.6.0
+// @version      0.6.1
 // @description  NodeLoc 三栏 IM 外观：节点/主题列表、帖子流、回复、搜索、用户与通知，支持三套皮肤和明暗主题。
 // @match        https://www.nodeloc.com/*
 // @noframes
@@ -3125,6 +3125,45 @@
 width: 10px; height: 10px; border-radius: 3px;
       flex-shrink: 0; margin: 0 4px;
 }
+
+/* NodeLoc 节点发言资格：在 IM 内显示完整原因和可执行操作 */
+.im-posting-gate {
+  position: fixed; inset: 0; z-index: 2147483200;
+  display: grid; place-items: center; padding: 24px;
+  background: rgba(15, 18, 25, .52); backdrop-filter: blur(2px);
+}
+.im-posting-gate-card {
+  width: min(520px, calc(100vw - 32px)); overflow: hidden;
+  border: 1px solid var(--im-border); border-radius: 12px;
+  background: var(--im-bg); color: var(--im-text);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .22);
+}
+.im-posting-gate-card header {
+  min-height: 58px; padding: 0 18px 0 22px;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--im-border);
+}
+.im-posting-gate-card h2 { margin: 0; font-size: 19px; line-height: 1.35; }
+.im-posting-gate-close {
+  width: 32px; height: 32px; padding: 0; border: 0; border-radius: 7px;
+  background: transparent; color: var(--im-text-2); font-size: 24px; cursor: pointer;
+}
+.im-posting-gate-close:hover { background: var(--im-hover); color: var(--im-text); }
+.im-posting-gate-body { padding: 18px 22px 8px; }
+.im-posting-gate-body p { margin: 0 0 10px; line-height: 1.6; overflow-wrap: anywhere; }
+.im-posting-gate-message { font-size: 15px; color: var(--im-text); }
+.im-posting-gate-hint { font-size: 13px; color: var(--im-text-3); }
+.im-posting-gate-card footer {
+  display: flex; align-items: center; gap: 10px; padding: 12px 22px 20px;
+}
+.im-posting-gate-card footer button {
+  min-height: 36px; padding: 0 17px; border-radius: 8px;
+  font: 500 14px/1 var(--im-font); cursor: pointer;
+}
+.im-posting-gate-primary { border: 1px solid var(--im-accent); background: var(--im-accent); color: #fff; }
+.im-posting-gate-primary:hover { filter: brightness(.96); }
+.im-posting-gate-secondary { border: 1px solid transparent; background: transparent; color: var(--im-text-2); }
+.im-posting-gate-secondary:hover { background: var(--im-hover); color: var(--im-text); }
 
 /* NodeLoc AnyVideo 占位在 IM cooked 中恢复为可播放的原生媒体控件 */
 .im-native-video {
@@ -11465,6 +11504,8 @@ ${data.raw}
     ).filter(Boolean) : null;
     if (serverErrors) {
       const err = new Error(serverErrors.join("；"));
+      err.serverPayload = payload;
+      err.serverErrors = serverErrors;
       err.validation = serverErrors.some(
         (message) => /过短|太短|至少.{0,8}(?:字|字符)|不能为空|字数|字符数|超过.{0,8}(?:字|字符)|too short|too long|required/i.test(message)
       );
@@ -11473,6 +11514,106 @@ ${data.raw}
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const post = payload.post || payload.created_post || payload;
     return post || null;
+  }
+  function textOf(element) {
+    var _a2;
+    return ((_a2 = element == null ? void 0 : element.textContent) == null ? void 0 : _a2.replace(/\s+/g, " ").trim()) || "";
+  }
+  function nativeNodeJoinButton() {
+    return [...document.querySelectorAll("button.community-join-button")].find((button) => !button.closest(".im-shell, .im-posting-gate")) || null;
+  }
+  function currentNodeInfo() {
+    var _a2, _b2, _c;
+    const joinButton = nativeNodeJoinButton();
+    const scope = ((_a2 = joinButton == null ? void 0 : joinButton.parentElement) == null ? void 0 : _a2.parentElement) || document;
+    const link = ((_b2 = scope.querySelector) == null ? void 0 : _b2.call(scope, 'a[href^="/n/"]')) || document.querySelector('.community-topic-view-compact a[href^="/n/"], a[href^="/n/"]');
+    const href = (link == null ? void 0 : link.getAttribute("href")) || "";
+    const slug = ((_c = href.match(/^\/n\/([^/?#]+)/)) == null ? void 0 : _c[1]) || "";
+    const label = textOf(link).replace(/^n\//i, "") || slug || "当前节点";
+    const scopeText = textOf(scope);
+    return {
+      joinButton,
+      slug,
+      label,
+      isPublic: /(?:^|\s)公开(?:\s|$)/.test(scopeText) || document.body.classList.contains("community-node-page")
+    };
+  }
+  function classifyPostingRestriction(message) {
+    const exact = String(message || "").trim() || "站点未返回具体原因。";
+    const rules = [
+      { test: /只允许成员|还不是成员|加入.*(?:节点|社区)|member/i, title: "需要加入节点", hint: "这个节点只允许成员发帖和回复。" },
+      { test: /私有|邀请|invite|private/i, title: "节点需要邀请", hint: "该节点不能直接加入，请联系节点管理员。" },
+      { test: /审批|申请|approval|pending/i, title: "节点需要审批", hint: "提交加入申请并等待管理员通过后即可回复。" },
+      { test: /已关闭|关闭了|不允许回复|closed/i, title: "话题已关闭", hint: "该话题目前不接受新回复。" },
+      { test: /归档|archived/i, title: "话题已归档", hint: "归档话题无法继续回复。" },
+      { test: /只读|禁止发言|read.?only/i, title: "当前为只读状态", hint: "该节点或话题暂时禁止发言。" },
+      { test: /信任等级|用户等级|级别不足|没有权限|trust level|permission/i, title: "发言权限不足", hint: "当前账号尚未达到该节点的发言要求。" },
+      { test: /慢速模式|稍后再试|过于频繁|slow.?mode|rate.?limit/i, title: "需要等待后再回复", hint: "请按提示等待后重试，草稿会为你保留。" },
+      { test: /过短|太短|至少.{0,8}(?:字|字符)|不能为空|required|too short/i, title: "回复内容未达要求", hint: "请按站点提示补充内容后重试。" },
+      { test: /过长|超过.{0,8}(?:字|字符)|too long/i, title: "回复内容过长", hint: "请精简内容或拆分后再发送。" },
+      { test: /登录|not logged|authentication/i, title: "需要登录", hint: "请先登录 NodeLoc 后再回复。" }
+    ];
+    const match = rules.find((rule) => rule.test.test(exact));
+    return match ? { ...match, message: exact } : {
+      title: "暂时无法回复",
+      message: exact,
+      hint: "这是 NodeLoc 返回的完整提示；修正后可直接重试，草稿不会丢失。"
+    };
+  }
+  function closePostingGate() {
+    var _a2;
+    (_a2 = document.querySelector(".im-posting-gate")) == null ? void 0 : _a2.remove();
+  }
+  function showPostingGate(message, options = {}) {
+    var _a2, _b2;
+    closePostingGate();
+    const info = classifyPostingRestriction(message);
+    const joinButton = options.joinButton || null;
+    const overlay = document.createElement("div");
+    overlay.className = "im-posting-gate";
+    overlay.innerHTML = `<section class="im-posting-gate-card" role="dialog" aria-modal="true" aria-labelledby="im-posting-gate-title">
+    <header><h2 id="im-posting-gate-title"></h2><button type="button" class="im-posting-gate-close" aria-label="关闭">×</button></header>
+    <div class="im-posting-gate-body"><p class="im-posting-gate-message"></p><p class="im-posting-gate-hint"></p></div>
+    <footer></footer>
+  </section>`;
+    overlay.querySelector("h2").textContent = options.title || info.title;
+    overlay.querySelector(".im-posting-gate-message").textContent = info.message;
+    overlay.querySelector(".im-posting-gate-hint").textContent = options.hint || info.hint;
+    const footer = overlay.querySelector("footer");
+    if (joinButton) {
+      const action = document.createElement("button");
+      action.type = "button";
+      action.className = "im-posting-gate-primary";
+      action.textContent = options.actionLabel || "加入节点";
+      action.addEventListener("click", () => {
+        closePostingGate();
+        joinButton.click();
+      });
+      footer.appendChild(action);
+    }
+    const close = document.createElement("button");
+    close.type = "button";
+    close.className = "im-posting-gate-secondary";
+    close.textContent = "关闭";
+    close.addEventListener("click", closePostingGate);
+    footer.appendChild(close);
+    overlay.querySelector(".im-posting-gate-close").addEventListener("click", closePostingGate);
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay) closePostingGate();
+    });
+    ((_a2 = document.querySelector(".im-shell")) == null ? void 0 : _a2.appendChild(overlay)) || document.body.appendChild(overlay);
+    (_b2 = overlay.querySelector(joinButton ? ".im-posting-gate-primary" : ".im-posting-gate-secondary")) == null ? void 0 : _b2.focus();
+  }
+  function postingPreflight() {
+    const node = currentNodeInfo();
+    if (!node.joinButton) return false;
+    const nodeName = node.slug ? `n/${node.slug}` : node.label;
+    showPostingGate(`${nodeName} 只允许成员发帖和回复，你还不是成员。`, {
+      title: `在 ${node.label} 回复`,
+      hint: node.isPublic ? "这是公开节点，加入后马上就能发言。" : "加入节点后即可发言。",
+      joinButton: node.joinButton
+    });
+    return true;
   }
   function imageFile(file) {
     if (!file) return false;
@@ -11603,6 +11744,7 @@ ${data.raw}
       setComposeStatus("请先打开一个话题", "error");
       return;
     }
+    if (postingPreflight()) return;
     composerState.submitting = true;
     updateComposeSendState();
     setComposeStatus("正在发送…", "busy");
@@ -11622,7 +11764,13 @@ ${data.raw}
         (message) => Number(message.dataset.postNumber) > beforeLastNumber && normalizeUsername(message.dataset.username) === myName
       );
       if (confirmed || confirmedInView) completeComposerSubmission(input);
-      else setComposeStatus(`发送失败：${apiError.message || "未知错误"}`, "error");
+      else {
+        setComposeStatus("暂时无法回复，请查看提示", "error");
+        const node = currentNodeInfo();
+        showPostingGate(apiError.message || "未知错误", {
+          joinButton: /\u6210\u5458|\u52A0\u5165/.test(apiError.message || "") ? node.joinButton : null
+        });
+      }
     } finally {
       composerState.submitting = false;
       updateComposeSendState();
@@ -17349,7 +17497,7 @@ ${item.label}`;
       }
     }
     function bootstrap() {
-      console.info(`[nodeloc-im] v${"0.6.0"} loaded, skin=${SKIN_ID}`);
+      console.info(`[nodeloc-im] v${"0.6.1"} loaded, skin=${SKIN_ID}`);
       if (!document.documentElement) {
         setTimeout(bootstrap, 0);
         return;

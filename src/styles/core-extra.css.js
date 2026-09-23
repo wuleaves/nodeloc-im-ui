@@ -3,6 +3,45 @@ width: 10px; height: 10px; border-radius: 3px;
       flex-shrink: 0; margin: 0 4px;
 }
 
+/* NodeLoc 节点发言资格：在 IM 内显示完整原因和可执行操作 */
+.im-posting-gate {
+  position: fixed; inset: 0; z-index: 2147483200;
+  display: grid; place-items: center; padding: 24px;
+  background: rgba(15, 18, 25, .52); backdrop-filter: blur(2px);
+}
+.im-posting-gate-card {
+  width: min(520px, calc(100vw - 32px)); overflow: hidden;
+  border: 1px solid var(--im-border); border-radius: 12px;
+  background: var(--im-bg); color: var(--im-text);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .22);
+}
+.im-posting-gate-card header {
+  min-height: 58px; padding: 0 18px 0 22px;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--im-border);
+}
+.im-posting-gate-card h2 { margin: 0; font-size: 19px; line-height: 1.35; }
+.im-posting-gate-close {
+  width: 32px; height: 32px; padding: 0; border: 0; border-radius: 7px;
+  background: transparent; color: var(--im-text-2); font-size: 24px; cursor: pointer;
+}
+.im-posting-gate-close:hover { background: var(--im-hover); color: var(--im-text); }
+.im-posting-gate-body { padding: 18px 22px 8px; }
+.im-posting-gate-body p { margin: 0 0 10px; line-height: 1.6; overflow-wrap: anywhere; }
+.im-posting-gate-message { font-size: 15px; color: var(--im-text); }
+.im-posting-gate-hint { font-size: 13px; color: var(--im-text-3); }
+.im-posting-gate-card footer {
+  display: flex; align-items: center; gap: 10px; padding: 12px 22px 20px;
+}
+.im-posting-gate-card footer button {
+  min-height: 36px; padding: 0 17px; border-radius: 8px;
+  font: 500 14px/1 var(--im-font); cursor: pointer;
+}
+.im-posting-gate-primary { border: 1px solid var(--im-accent); background: var(--im-accent); color: #fff; }
+.im-posting-gate-primary:hover { filter: brightness(.96); }
+.im-posting-gate-secondary { border: 1px solid transparent; background: transparent; color: var(--im-text-2); }
+.im-posting-gate-secondary:hover { background: var(--im-hover); color: var(--im-text); }
+
 /* NodeLoc AnyVideo 占位在 IM cooked 中恢复为可播放的原生媒体控件 */
 .im-native-video {
   width: min(100%, 760px);
