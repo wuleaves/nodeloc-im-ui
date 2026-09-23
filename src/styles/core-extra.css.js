@@ -3,6 +3,36 @@ width: 10px; height: 10px; border-radius: 3px;
       flex-shrink: 0; margin: 0 4px;
 }
 
+/* NodeLoc AnyVideo 占位在 IM cooked 中恢复为可播放的原生媒体控件 */
+.im-native-video {
+  width: min(100%, 760px);
+  margin: 10px 0;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #000;
+}
+.im-native-video .im-post-video {
+  display: block;
+  width: 100%;
+  max-height: min(70vh, 640px);
+  background: #000;
+  object-fit: contain;
+}
+.im-native-video .im-video-fallback {
+  display: block;
+  padding: 7px 10px;
+  color: #fff !important;
+  background: rgba(0, 0, 0, .78);
+  font-size: 12px;
+  text-align: center;
+  text-decoration: none !important;
+}
+.im-native-video .im-video-fallback:hover { background: rgba(0, 0, 0, .92); }
+.im-msg-bubble video,
+.im-msg-bubble iframe {
+  max-width: 100%;
+}
+
 .im-chat-title-row {
 display: flex; align-items: center; gap: 8px; min-width: 0;
 }

@@ -2,7 +2,7 @@
 // @name         NodeLoc · IM 外观（钉钉 / 飞书 / 企业微信）
 // @namespace    https://www.nodeloc.com/
 // @author       czm15053, NodeLoc adaptation
-// @version      0.3.1
+// @version      0.3.2
 // @description  NodeLoc 三栏 IM 外观：节点/主题列表、帖子流、回复、搜索、用户与通知，支持三套皮肤和明暗主题。
 // @match        https://www.nodeloc.com/*
 // @noframes
@@ -3020,6 +3020,36 @@
   const CSS_CORE_EXTRA = String.raw`.im-nav2-cat-dot {
 width: 10px; height: 10px; border-radius: 3px;
       flex-shrink: 0; margin: 0 4px;
+}
+
+/* NodeLoc AnyVideo 占位在 IM cooked 中恢复为可播放的原生媒体控件 */
+.im-native-video {
+  width: min(100%, 760px);
+  margin: 10px 0;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #000;
+}
+.im-native-video .im-post-video {
+  display: block;
+  width: 100%;
+  max-height: min(70vh, 640px);
+  background: #000;
+  object-fit: contain;
+}
+.im-native-video .im-video-fallback {
+  display: block;
+  padding: 7px 10px;
+  color: #fff !important;
+  background: rgba(0, 0, 0, .78);
+  font-size: 12px;
+  text-align: center;
+  text-decoration: none !important;
+}
+.im-native-video .im-video-fallback:hover { background: rgba(0, 0, 0, .92); }
+.im-msg-bubble video,
+.im-msg-bubble iframe {
+  max-width: 100%;
 }
 
 .im-chat-title-row {
@@ -9177,7 +9207,52 @@ html.im-theme {
   function afterChatPaint(body) {
     var _a2, _b2;
     (_a2 = chatHooks.enhancePolls) == null ? void 0 : _a2.call(chatHooks, body);
+    enhanceVideoPlaceholders(body);
     (_b2 = chatHooks.syncAiSummary) == null ? void 0 : _b2.call(chatHooks);
+  }
+  function enhanceVideoPlaceholders(root2) {
+    if (!root2) return;
+    for (const placeholder of root2.querySelectorAll(".video-placeholder-container[data-video-src]")) {
+      if (placeholder.dataset.imVideoEnhanced === "1") continue;
+      const rawSrc = String(placeholder.dataset.videoSrc || "").trim();
+      if (!rawSrc) continue;
+      let src;
+      try {
+        src = new URL(rawSrc, location.origin);
+        if (!/^(https?:|blob:)$/.test(src.protocol)) continue;
+      } catch {
+        continue;
+      }
+      const video = document.createElement("video");
+      video.className = "im-post-video";
+      video.controls = true;
+      video.preload = "metadata";
+      video.playsInline = true;
+      video.src = src.href;
+      const rawPoster = String(placeholder.dataset.thumbnailSrc || "").trim();
+      if (rawPoster) {
+        try {
+          const poster = new URL(rawPoster, location.origin);
+          if (/^https?:$/.test(poster.protocol)) video.poster = poster.href;
+        } catch {
+        }
+      }
+      const fallback = document.createElement("a");
+      fallback.className = "im-video-fallback";
+      fallback.href = src.href;
+      fallback.target = "_blank";
+      fallback.rel = "noopener noreferrer";
+      fallback.textContent = "无法播放？打开原视频";
+      placeholder.dataset.imVideoEnhanced = "1";
+      placeholder.classList.remove("video-placeholder-container");
+      placeholder.classList.add("im-native-video");
+      placeholder.replaceChildren(video, fallback);
+    }
+    root2.querySelectorAll("video:not(.im-post-video)").forEach((video) => {
+      video.controls = true;
+      video.playsInline = true;
+      if (!video.preload) video.preload = "metadata";
+    });
   }
   function extractTextSnippet(html, maxLen = 60) {
     if (!html) return "";
@@ -10268,7 +10343,7 @@ html.im-theme {
     });
   }
   function syncNewPostsFromDom() {
-    var _a2, _b2, _c;
+    var _a2, _b2;
     if (!chatState.topicId) return;
     const articles = document.querySelectorAll(".post-stream article.topic-post");
     if (!articles.length) return;
@@ -10307,7 +10382,7 @@ html.im-theme {
       appended = true;
     }
     if (appended) {
-      (_c = chatHooks.enhancePolls) == null ? void 0 : _c.call(chatHooks, body);
+      afterChatPaint(body);
       body.scrollTop = body.scrollHeight;
     }
   }
@@ -17009,7 +17084,7 @@ ${item.label}`;
       }
     }
     function bootstrap() {
-      console.info(`[nodeloc-im] v${"0.3.1"} loaded, skin=${SKIN_ID}`);
+      console.info(`[nodeloc-im] v${"0.3.2"} loaded, skin=${SKIN_ID}`);
       if (!document.documentElement) {
         setTimeout(bootstrap, 0);
         return;

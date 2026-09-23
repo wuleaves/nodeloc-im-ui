@@ -77,6 +77,13 @@ for (const marker of ["im-dingtalk-profile-menu", "function toggleDingtalkProfil
   }
 }
 
+for (const marker of ["function enhanceVideoPlaceholders(", "video-placeholder-container[data-video-src]", "im-video-fallback"]) {
+  if (!output.includes(marker)) {
+    console.error(`missing video compatibility marker: ${marker}`);
+    ok = false;
+  }
+}
+
 if (ok) {
   console.log("self-check passed");
   process.exit(0);

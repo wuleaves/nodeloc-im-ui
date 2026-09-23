@@ -27,7 +27,55 @@ import { renderNodeLocPostExtras } from "../features/nodeloc-plugins.js";
 
 function afterChatPaint(body) {
   chatHooks.enhancePolls?.(body);
+  enhanceVideoPlaceholders(body);
   chatHooks.syncAiSummary?.();
+}
+
+/** NodeLoc AnyVideo 在原生 cooked 挂载后才会把空占位转换成播放器。
+ * IM 视图直接使用 API cooked，因此在这里恢复为无需插件事件的原生 video。 */
+export function enhanceVideoPlaceholders(root) {
+  if (!root) return;
+  for (const placeholder of root.querySelectorAll(".video-placeholder-container[data-video-src]")) {
+    if (placeholder.dataset.imVideoEnhanced === "1") continue;
+    const rawSrc = String(placeholder.dataset.videoSrc || "").trim();
+    if (!rawSrc) continue;
+    let src;
+    try {
+      src = new URL(rawSrc, location.origin);
+      if (!/^(https?:|blob:)$/.test(src.protocol)) continue;
+    } catch {
+      continue;
+    }
+    const video = document.createElement("video");
+    video.className = "im-post-video";
+    video.controls = true;
+    video.preload = "metadata";
+    video.playsInline = true;
+    video.src = src.href;
+    const rawPoster = String(placeholder.dataset.thumbnailSrc || "").trim();
+    if (rawPoster) {
+      try {
+        const poster = new URL(rawPoster, location.origin);
+        if (/^https?:$/.test(poster.protocol)) video.poster = poster.href;
+      } catch { /* 无效封面不影响视频播放 */ }
+    }
+    const fallback = document.createElement("a");
+    fallback.className = "im-video-fallback";
+    fallback.href = src.href;
+    fallback.target = "_blank";
+    fallback.rel = "noopener noreferrer";
+    fallback.textContent = "无法播放？打开原视频";
+    placeholder.dataset.imVideoEnhanced = "1";
+    placeholder.classList.remove("video-placeholder-container");
+    placeholder.classList.add("im-native-video");
+    placeholder.replaceChildren(video, fallback);
+  }
+  // 普通 cooked video 同样确保显示浏览器控制条。
+  root.querySelectorAll("video:not(.im-post-video)").forEach((video) => {
+    video.controls = true;
+    video.playsInline = true;
+    if (!video.preload) video.preload = "metadata";
+  });
 }
 
 export function extractTextSnippet(html, maxLen = 60) {
@@ -1240,7 +1288,7 @@ export function syncNewPostsFromDom() {
     appended = true;
   }
   if (appended) {
-    chatHooks.enhancePolls?.(body);
+    afterChatPaint(body);
     body.scrollTop = body.scrollHeight;
   }
 }
