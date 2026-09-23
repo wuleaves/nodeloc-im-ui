@@ -2,7 +2,7 @@
 // @name         NodeLoc · IM 外观（钉钉 / 飞书 / 企业微信）
 // @namespace    https://www.nodeloc.com/
 // @author       czm15053, NodeLoc adaptation
-// @version      0.5.8
+// @version      0.5.9
 // @description  NodeLoc 三栏 IM 外观：节点/主题列表、帖子流、回复、搜索、用户与通知，支持三套皮肤和明暗主题。
 // @match        https://www.nodeloc.com/*
 // @noframes
@@ -8128,32 +8128,6 @@ html.im-theme {
   function getComposerService(owner) {
     return safeLookup(owner, "service:composer") || safeLookup(owner, "controller:composer");
   }
-  function getTopicModel(owner) {
-    var _a2;
-    const topicController = safeLookup(owner, "controller:topic");
-    if (!topicController) return null;
-    try {
-      return ((_a2 = topicController.get) == null ? void 0 : _a2.call(topicController, "model")) || topicController.model || null;
-    } catch {
-      return null;
-    }
-  }
-  function findLoadedPost(topic, postNumber) {
-    var _a2, _b2;
-    if (!topic || !postNumber) return null;
-    try {
-      const stream = ((_a2 = topic.get) == null ? void 0 : _a2.call(topic, "postStream")) || topic.postStream;
-      const posts = ((_b2 = stream == null ? void 0 : stream.get) == null ? void 0 : _b2.call(stream, "posts")) || (stream == null ? void 0 : stream.posts) || [];
-      return [...posts].find(
-        (p) => {
-          var _a3;
-          return Number(((_a3 = p == null ? void 0 : p.get) == null ? void 0 : _a3.call(p, "post_number")) ?? (p == null ? void 0 : p.post_number)) === Number(postNumber);
-        }
-      ) || null;
-    } catch {
-    }
-    return null;
-  }
   function isComposerOpen() {
     const el = document.querySelector("#reply-control");
     return !!(el && (el.classList.contains("open") || el.classList.contains("fullscreen") || el.classList.contains("edit-title")));
@@ -11497,8 +11471,7 @@ ${data.raw}
     }
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const post = payload.post || payload.created_post || payload;
-    if (!post || !post.id && !post.post_id) throw new Error("站点未确认回复");
-    return post;
+    return post || null;
   }
   function imageFile(file) {
     if (!file) return false;
@@ -11634,22 +11607,10 @@ ${data.raw}
     setComposeStatus("正在发送…", "busy");
     const replyTo = composerState.replyToPostNumber;
     try {
-      try {
-        const post = await submitReplyViaApi(raw, replyTo);
-        completeComposerSubmission(input, post);
-      } catch (apiError) {
-        if (apiError.validation) {
-          setComposeStatus(`发送失败：${apiError.message}`, "error");
-          return;
-        }
-        setComposeStatus(`接口发送失败，尝试原生编辑器：${apiError.message || ""}`, "error");
-        try {
-          await submitNativeReply(raw, replyTo);
-          completeComposerSubmission(input);
-        } catch (nativeError) {
-          setComposeStatus(`发送失败：${nativeError.message || apiError.message || "未知错误"}`, "error");
-        }
-      }
+      const post = await submitReplyViaApi(raw, replyTo);
+      completeComposerSubmission(input, post);
+    } catch (apiError) {
+      setComposeStatus(`发送失败：${apiError.message || "未知错误"}`, "error");
     } finally {
       composerState.submitting = false;
       updateComposeSendState();
@@ -11669,31 +11630,6 @@ ${data.raw}
     setTimeout(() => syncNewPostsFromDom(), 400);
     setTimeout(() => syncNewPostsFromDom(), 1200);
   }
-  async function submitNativeReply(raw, replyToPostNumber) {
-    openNativeComposer(replyToPostNumber);
-    const ta = await waitForComposerTextarea();
-    if (!ta) throw new Error("无法打开原生编辑器");
-    ta.focus();
-    ta.value = raw;
-    ta.dispatchEvent(new Event("input", { bubbles: true }));
-    const submitBtn = document.querySelector(
-      "#reply-control .save-or-cancel button.create, #reply-control .save-or-cancel button.btn-primary, #reply-control button.create.btn-primary"
-    );
-    if (!submitBtn) throw new Error("找不到原生提交按钮");
-    submitBtn.click();
-  }
-  function waitForComposerTextarea(timeoutMs = 5e3) {
-    return new Promise((resolve) => {
-      const start = Date.now();
-      const check = () => {
-        const ta = document.querySelector("#reply-control textarea.d-editor-input, #reply-control textarea");
-        if (ta) return resolve(ta);
-        if (Date.now() - start > timeoutMs) return resolve(null);
-        setTimeout(check, 100);
-      };
-      check();
-    });
-  }
   function showTargetedReply(postNumber) {
     var _a2, _b2;
     const { input, target } = composeUi();
@@ -11712,228 +11648,6 @@ ${data.raw}
   }
   function replyToPost(postNumber) {
     showTargetedReply(postNumber);
-  }
-  function withClickableNativeReplyControls(fn) {
-    let style = document.getElementById("im-temp-reply-click");
-    if (!style) {
-      style = document.createElement("style");
-      style.id = "im-temp-reply-click";
-      style.textContent = `
-      html.im-theme.im-locked #main-outlet #topic-footer-buttons,
-      html.im-theme.im-locked #main-outlet .topic-footer-main-buttons,
-      html.im-theme.im-locked #main-outlet .topic-footer-main-buttons *,
-      html.im-theme.im-locked #main-outlet #topic-footer-buttons *,
-      html.im-theme.im-locked #main-outlet .post-stream article .post-controls,
-      html.im-theme.im-locked #main-outlet .post-stream article .post-controls * {
-        visibility: visible !important;
-        height: auto !important;
-        max-height: none !important;
-        overflow: visible !important;
-        pointer-events: auto !important;
-        position: relative !important;
-      }
-      html.im-theme.im-locked #main-outlet .container.posts,
-      html.im-theme.im-locked #main-outlet .topic-area,
-      html.im-theme.im-locked #main-outlet .post-stream,
-      html.im-theme.im-locked #main-outlet .topic-footer-buttons,
-      html.im-theme.im-locked #main-outlet #topic-footer-buttons {
-        visibility: visible !important;
-        height: auto !important;
-        overflow: visible !important;
-      }
-    `;
-      document.documentElement.appendChild(style);
-    }
-    try {
-      return fn();
-    } finally {
-      setTimeout(() => {
-        var _a2;
-        (_a2 = document.getElementById("im-temp-reply-click")) == null ? void 0 : _a2.remove();
-      }, 800);
-    }
-  }
-  function clickNativeReplyButton(postNumber) {
-    return withClickableNativeReplyControls(() => {
-      if (postNumber) {
-        const article = document.querySelector(
-          `.post-stream article[data-post-number="${postNumber}"], #post_${postNumber}, article[id="post_${postNumber}"]`
-        );
-        const postReply = article == null ? void 0 : article.querySelector(
-          "button.reply, .post-controls button.reply, button.create.reply, .reply.create"
-        );
-        if (postReply) {
-          postReply.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
-          return true;
-        }
-      }
-      const topicSelectors = [
-        "#topic-footer-buttons button.create",
-        "#topic-footer-buttons button.btn-primary.create",
-        ".topic-footer-main-buttons button.create",
-        ".topic-footer-main-buttons button.btn-primary",
-        "button.btn-primary.create.reply",
-        "button.create.reply"
-      ];
-      for (const sel of topicSelectors) {
-        const btn = document.querySelector(sel);
-        if (!btn || btn.id === "create-topic" || btn.closest(".d-header")) continue;
-        btn.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
-        return true;
-      }
-      return false;
-    });
-  }
-  function openComposerViaService(postNumber) {
-    var _a2, _b2, _c, _d, _e, _f, _g;
-    const owner = getEmberOwner();
-    if (!owner) return false;
-    const composer = getComposerService(owner);
-    if (!composer) return false;
-    const topic = getTopicModel(owner);
-    const Composer = discourseRequire("discourse/models/composer");
-    const REPLY = (Composer == null ? void 0 : Composer.REPLY) || ((_a2 = Composer == null ? void 0 : Composer.default) == null ? void 0 : _a2.REPLY) || "reply";
-    try {
-      if (postNumber) {
-        const post = findLoadedPost(topic, postNumber);
-        if (post && typeof composer.replyTo === "function") {
-          composer.replyTo(post);
-          return true;
-        }
-        if (post && typeof composer.open === "function") {
-          composer.open({
-            action: REPLY,
-            post,
-            draftKey: ((_b2 = topic == null ? void 0 : topic.get) == null ? void 0 : _b2.call(topic, "draft_key")) || (topic == null ? void 0 : topic.draft_key) || `topic_${chatState.topicId}`,
-            draftSequence: ((_c = topic == null ? void 0 : topic.get) == null ? void 0 : _c.call(topic, "draft_sequence")) ?? (topic == null ? void 0 : topic.draft_sequence)
-          });
-          return true;
-        }
-      }
-      if (topic && typeof composer.replyToTopic === "function") {
-        composer.replyToTopic(REPLY, topic);
-        return true;
-      }
-      if (topic && typeof composer.open === "function") {
-        composer.open({
-          action: REPLY,
-          topic,
-          draftKey: ((_d = topic.get) == null ? void 0 : _d.call(topic, "draft_key")) || topic.draft_key || `topic_${chatState.topicId}`,
-          draftSequence: ((_e = topic.get) == null ? void 0 : _e.call(topic, "draft_sequence")) ?? topic.draft_sequence,
-          title: ((_f = topic.get) == null ? void 0 : _f.call(topic, "title")) || topic.title,
-          categoryId: ((_g = topic.get) == null ? void 0 : _g.call(topic, "category_id")) || topic.category_id
-        });
-        return true;
-      }
-    } catch (err) {
-      console.warn("[nodeloc-im] composer service open failed", err);
-    }
-    return false;
-  }
-  function openComposerViaKeyboard(postNumber) {
-    var _a2, _b2, _c, _d;
-    try {
-      if (postNumber) {
-        const article = document.querySelector(
-          `.post-stream article[data-post-number="${postNumber}"], #post_${postNumber}`
-        );
-        (_a2 = article == null ? void 0 : article.setAttribute) == null ? void 0 : _a2.call(article, "tabindex", "-1");
-        (_b2 = article == null ? void 0 : article.focus) == null ? void 0 : _b2.call(article);
-      } else {
-        (_d = (_c = document.activeElement) == null ? void 0 : _c.blur) == null ? void 0 : _d.call(_c);
-      }
-      const opts = { key: "r", code: "KeyR", keyCode: 82, which: 82, bubbles: true, cancelable: true, view: window };
-      document.dispatchEvent(new KeyboardEvent("keydown", opts));
-      document.body.dispatchEvent(new KeyboardEvent("keydown", opts));
-      return true;
-    } catch {
-      return false;
-    }
-  }
-  function openNativeComposer(postNumber) {
-    var _a2;
-    try {
-      flashComposeHint("正在打开编辑器…", "busy");
-      if (isComposerOpen()) {
-        const ta = document.querySelector(
-          "#reply-control.open textarea, #reply-control.fullscreen textarea, #reply-control.open .ProseMirror"
-        );
-        (_a2 = ta == null ? void 0 : ta.focus) == null ? void 0 : _a2.call(ta);
-        flashComposeHint("编辑器已打开", "busy");
-        return true;
-      }
-      let opened = false;
-      try {
-        opened = !!openComposerViaService(postNumber);
-      } catch {
-      }
-      if (!opened) {
-        try {
-          opened = !!clickNativeReplyButton(postNumber);
-        } catch {
-        }
-      }
-      if (!opened) {
-        try {
-          openComposerViaKeyboard(postNumber);
-        } catch {
-        }
-      }
-      setTimeout(() => {
-        if (isComposerOpen()) {
-          flashComposeHint("编辑器已打开", "busy");
-          return;
-        }
-        const root2 = document.documentElement;
-        const hadLock = root2.classList.contains(LOCK_CLASS);
-        const unlock = document.createElement("style");
-        unlock.id = "im-unlock-for-reply";
-        unlock.textContent = `
-        html.im-theme.im-locked #main-outlet-wrapper,
-        html.im-theme.im-locked #main-outlet,
-        html.im-theme.im-locked #main-outlet > * {
-          pointer-events: auto !important;
-          visibility: visible !important;
-          height: auto !important;
-          overflow: visible !important;
-        }
-        html.im-theme #reply-control {
-          display: block !important;
-          pointer-events: auto !important;
-          z-index: 600 !important;
-        }
-      `;
-        document.documentElement.appendChild(unlock);
-        if (hadLock) root2.classList.remove(LOCK_CLASS);
-        try {
-          if (!openComposerViaService(postNumber) && !clickNativeReplyButton(postNumber)) {
-            openComposerViaKeyboard(postNumber);
-          }
-        } catch {
-        }
-        setTimeout(() => {
-          var _a3;
-          if (hadLock) root2.classList.add(LOCK_CLASS);
-          (_a3 = document.getElementById("im-unlock-for-reply")) == null ? void 0 : _a3.remove();
-          if (isComposerOpen()) {
-            flashComposeHint("编辑器已打开", "busy");
-          } else {
-            flashComposeHint("打开失败：请点右上角「原生视图」回复", "error");
-            console.warn("[nodeloc-im] openNativeComposer failed", {
-              topicId: chatState.topicId,
-              postNumber,
-              hasOwner: !!getEmberOwner(),
-              hasComposer: !!getComposerService(getEmberOwner())
-            });
-          }
-        }, 250);
-      }, 180);
-      return true;
-    } catch (err) {
-      console.warn("[nodeloc-im] openNativeComposer crashed", err);
-      flashComposeHint(`打开失败：${err && err.message ? err.message : "未知错误"}`, "error");
-      return false;
-    }
   }
   Object.assign(chatHooks, { wireComposer, replyToPost });
   function openTopicComposerViaService() {
@@ -17626,7 +17340,7 @@ ${item.label}`;
       }
     }
     function bootstrap() {
-      console.info(`[nodeloc-im] v${"0.5.8"} loaded, skin=${SKIN_ID}`);
+      console.info(`[nodeloc-im] v${"0.5.9"} loaded, skin=${SKIN_ID}`);
       if (!document.documentElement) {
         setTimeout(bootstrap, 0);
         return;

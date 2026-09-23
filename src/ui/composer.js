@@ -670,8 +670,9 @@ async function submitReplyViaApi(raw, replyToPostNumber) {
   }
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   const post = payload.post || payload.created_post || payload;
-  if (!post || (!post.id && !post.post_id)) throw new Error("站点未确认回复");
-  return post;
+  // NodeLoc 的插件链可能只返回 success / post_number，不一定返回标准 post.id。
+  // HTTP 成功且没有 errors 即代表 Discourse 已接受，后续由话题同步确认新楼层。
+  return post || null;
 }
 function imageFile(file) {
   if (!file) return false;
@@ -806,23 +807,11 @@ async function submitComposer() {
   setComposeStatus("正在发送…", "busy");
   const replyTo = composerState.replyToPostNumber;
   try {
-    try {
-      const post = await submitReplyViaApi(raw, replyTo);
-      completeComposerSubmission(input, post);
-    } catch (apiError) {
-      // 站点校验拒绝（字数不足等）：IM 内直接提示，不兜底原生编辑器
-      if (apiError.validation) {
-        setComposeStatus(`发送失败：${apiError.message}`, "error");
-        return;
-      }
-      setComposeStatus(`接口发送失败，尝试原生编辑器：${apiError.message || ""}`, "error");
-      try {
-        await submitNativeReply(raw, replyTo);
-        completeComposerSubmission(input);
-      } catch (nativeError) {
-        setComposeStatus(`发送失败：${nativeError.message || apiError.message || "未知错误"}`, "error");
-      }
-    }
+    const post = await submitReplyViaApi(raw, replyTo);
+    completeComposerSubmission(input, post);
+  } catch (apiError) {
+    // 不再自动打开被 IM 布局隐藏的原生 composer，否则会遮挡页面并造成假死。
+    setComposeStatus(`发送失败：${apiError.message || "未知错误"}`, "error");
   } finally {
     composerState.submitting = false;
     updateComposeSendState();
@@ -841,31 +830,6 @@ function completeComposerSubmission(input, post) {
   }
   setTimeout(() => syncNewPostsFromDom(), 400);
   setTimeout(() => syncNewPostsFromDom(), 1200);
-}
-async function submitNativeReply(raw, replyToPostNumber) {
-  openNativeComposer(replyToPostNumber);
-  const ta = await waitForComposerTextarea();
-  if (!ta) throw new Error("无法打开原生编辑器");
-  ta.focus();
-  ta.value = raw;
-  ta.dispatchEvent(new Event("input", { bubbles: true }));
-  const submitBtn = document.querySelector(
-    "#reply-control .save-or-cancel button.create, #reply-control .save-or-cancel button.btn-primary, #reply-control button.create.btn-primary"
-  );
-  if (!submitBtn) throw new Error("找不到原生提交按钮");
-  submitBtn.click();
-}
-function waitForComposerTextarea(timeoutMs = 5000) {
-  return new Promise((resolve) => {
-    const start = Date.now();
-    const check = () => {
-      const ta = document.querySelector("#reply-control textarea.d-editor-input, #reply-control textarea");
-      if (ta) return resolve(ta);
-      if (Date.now() - start > timeoutMs) return resolve(null);
-      setTimeout(check, 100);
-    };
-    check();
-  });
 }
 function showTargetedReply(postNumber) {
   const { input, target } = composeUi();
@@ -1025,7 +989,7 @@ function openComposerViaKeyboard(postNumber) {
   }
 }
 /** 打开 Discourse 原生 composer（必须真正 open，禁止只 focus textarea） */
-function openNativeComposer(postNumber) {
+function _openNativeComposer(postNumber) {
   try {
     flashComposeHint("正在打开编辑器…", "busy");
 
