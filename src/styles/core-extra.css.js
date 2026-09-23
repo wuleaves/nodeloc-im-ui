@@ -39,6 +39,7 @@ width: 10px; height: 10px; border-radius: 3px;
 }
 .im-posting-gate-primary { border: 1px solid var(--im-accent); background: var(--im-accent); color: #fff; }
 .im-posting-gate-primary:hover { filter: brightness(.96); }
+.im-posting-gate-primary:disabled { cursor: wait; opacity: .72; }
 .im-posting-gate-secondary { border: 1px solid transparent; background: transparent; color: var(--im-text-2); }
 .im-posting-gate-secondary:hover { background: var(--im-hover); color: var(--im-text); }
 

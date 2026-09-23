@@ -2,7 +2,7 @@
 // @name         NodeLoc · IM 外观（钉钉 / 飞书 / 企业微信）
 // @namespace    https://www.nodeloc.com/
 // @author       czm15053, NodeLoc adaptation
-// @version      0.6.2
+// @version      0.6.3
 // @description  NodeLoc 三栏 IM 外观：节点/主题列表、帖子流、回复、搜索、用户与通知，支持三套皮肤和明暗主题。
 // @match        https://www.nodeloc.com/*
 // @noframes
@@ -3162,6 +3162,7 @@ width: 10px; height: 10px; border-radius: 3px;
 }
 .im-posting-gate-primary { border: 1px solid var(--im-accent); background: var(--im-accent); color: #fff; }
 .im-posting-gate-primary:hover { filter: brightness(.96); }
+.im-posting-gate-primary:disabled { cursor: wait; opacity: .72; }
 .im-posting-gate-secondary { border: 1px solid transparent; background: transparent; color: var(--im-text-2); }
 .im-posting-gate-secondary:hover { background: var(--im-hover); color: var(--im-text); }
 
@@ -11542,27 +11543,52 @@ ${data.raw}
     var _a2;
     return ((_a2 = element == null ? void 0 : element.textContent) == null ? void 0 : _a2.replace(/\s+/g, " ").trim()) || "";
   }
-  function nativeNodeJoinButton() {
-    return [...document.querySelectorAll("button.community-join-button")].find((button) => !button.closest(".im-shell, .im-posting-gate")) || null;
+  function nodeSlugFromHref(href) {
+    var _a2;
+    return ((_a2 = String(href || "").match(/^\/n\/([^/?#]+)/)) == null ? void 0 : _a2[1]) || "";
+  }
+  function nativeNodeJoinButton(slug) {
+    var _a2;
+    const gateButton = [...document.querySelectorAll(".community-posting-gate button")].find((button) => /加入(?:节点)?/.test(textOf(button)));
+    if (gateButton) return gateButton;
+    if (!slug) return null;
+    const nodePath = `/n/${decodeURIComponent(slug)}`;
+    const links = [...document.querySelectorAll('a[href^="/n/"]')].filter((link) => {
+      try {
+        return decodeURIComponent(new URL(link.href, location.origin).pathname) === nodePath;
+      } catch {
+        return false;
+      }
+    });
+    for (const link of links) {
+      let scope = link.parentElement;
+      for (let depth = 0; scope && depth < 8; depth++, scope = scope.parentElement) {
+        const button = (_a2 = scope.querySelector) == null ? void 0 : _a2.call(scope, "button.community-join-button");
+        if (button && !button.closest(".im-shell, .im-posting-gate")) return button;
+      }
+    }
+    return null;
   }
   function currentNodeInfo() {
-    var _a2, _b2, _c;
-    const joinButton = nativeNodeJoinButton();
-    const scope = ((_a2 = joinButton == null ? void 0 : joinButton.parentElement) == null ? void 0 : _a2.parentElement) || document;
-    const link = ((_b2 = scope.querySelector) == null ? void 0 : _b2.call(scope, 'a[href^="/n/"]')) || document.querySelector('.community-topic-view-compact a[href^="/n/"], a[href^="/n/"]');
+    var _a2;
+    const link = document.querySelector('.im-chat-chip[href^="/n/"]') || document.querySelector('.community-topic-view-compact a[href^="/n/"]');
     const href = (link == null ? void 0 : link.getAttribute("href")) || "";
-    const slug = ((_c = href.match(/^\/n\/([^/?#]+)/)) == null ? void 0 : _c[1]) || "";
+    const slug = nodeSlugFromHref(href);
+    const joinButton = nativeNodeJoinButton(slug);
+    const scope = ((_a2 = joinButton == null ? void 0 : joinButton.parentElement) == null ? void 0 : _a2.parentElement) || (link == null ? void 0 : link.parentElement) || document;
     const label = textOf(link).replace(/^n\//i, "") || slug || "当前节点";
     const scopeText = textOf(scope);
+    const memberClass = slug ? `group-${decodeURIComponent(slug).replace(/[^a-z0-9_-]/gi, "-")}-members` : "";
     return {
       joinButton,
       slug,
       label,
+      isMember: !!memberClass && document.body.classList.contains(memberClass),
       isPublic: /(?:^|\s)公开(?:\s|$)/.test(scopeText) || document.body.classList.contains("community-node-page")
     };
   }
   function classifyPostingRestriction(message) {
-    const exact = String(message || "").trim() || "站点未返回具体原因。";
+    const exact = String(message).trim() || "站点未返回具体原因。";
     const rules = [
       { test: /只允许成员|还不是成员|加入.*(?:节点|社区)|member/i, title: "需要加入节点", hint: "这个节点只允许成员发帖和回复。" },
       { test: /私有|邀请|invite|private/i, title: "节点需要邀请", hint: "该节点不能直接加入，请联系节点管理员。" },
@@ -11608,9 +11634,28 @@ ${data.raw}
       action.type = "button";
       action.className = "im-posting-gate-primary";
       action.textContent = options.actionLabel || "加入节点";
-      action.addEventListener("click", () => {
-        closePostingGate();
+      action.addEventListener("click", async () => {
+        action.disabled = true;
+        action.textContent = "正在加入…";
+        const hint = overlay.querySelector(".im-posting-gate-hint");
         joinButton.click();
+        let joined = false;
+        for (let attempt = 0; attempt < 20; attempt++) {
+          await new Promise((resolve) => setTimeout(resolve, 250));
+          const current = currentNodeInfo();
+          const nativeLabel = textOf(current.joinButton || joinButton);
+          joined = current.isMember || /已加入|退出节点|离开节点|joined/i.test(nativeLabel) || !joinButton.isConnected && !current.joinButton;
+          if (joined) break;
+        }
+        if (joined) {
+          action.textContent = "已加入";
+          hint.textContent = "加入成功，现在可以直接发送刚才的回复。";
+          setTimeout(closePostingGate, 700);
+        } else {
+          action.disabled = false;
+          action.textContent = "重试加入节点";
+          hint.textContent = "加入尚未完成，请重试；输入内容仍会保留。";
+        }
       });
       footer.appendChild(action);
     }
@@ -11626,17 +11671,6 @@ ${data.raw}
     });
     ((_a2 = document.querySelector(".im-shell")) == null ? void 0 : _a2.appendChild(overlay)) || document.body.appendChild(overlay);
     (_b2 = overlay.querySelector(joinButton ? ".im-posting-gate-primary" : ".im-posting-gate-secondary")) == null ? void 0 : _b2.focus();
-  }
-  function postingPreflight() {
-    const node = currentNodeInfo();
-    if (!node.joinButton) return false;
-    const nodeName = node.slug ? `n/${node.slug}` : node.label;
-    showPostingGate(`${nodeName} 只允许成员发帖和回复，你还不是成员。`, {
-      title: `在 ${node.label} 回复`,
-      hint: node.isPublic ? "这是公开节点，加入后马上就能发言。" : "加入节点后即可发言。",
-      joinButton: node.joinButton
-    });
-    return true;
   }
   function imageFile(file) {
     if (!file) return false;
@@ -11767,7 +11801,6 @@ ${data.raw}
       setComposeStatus("请先打开一个话题", "error");
       return;
     }
-    if (postingPreflight()) return;
     composerState.submitting = true;
     updateComposeSendState();
     setComposeStatus("正在发送…", "busy");
@@ -11791,7 +11824,9 @@ ${data.raw}
         setComposeStatus("暂时无法回复，请查看提示", "error");
         const node = currentNodeInfo();
         showPostingGate(apiError.message || "未知错误", {
-          joinButton: /\u6210\u5458|\u52A0\u5165/.test(apiError.message || "") ? node.joinButton : null
+          title: /\u6210\u5458|\u52A0\u5165/.test(apiError.message || "") ? `在 ${node.label} 回复` : void 0,
+          hint: /\u6210\u5458|\u52A0\u5165/.test(apiError.message || "") && node.isPublic ? "这是公开节点，加入后马上就能发言。" : void 0,
+          joinButton: /\u6210\u5458|\u52A0\u5165/.test(apiError.message || "") && !node.isMember ? node.joinButton : null
         });
       }
     } finally {
@@ -17554,7 +17589,7 @@ ${item.label}`;
       }
     }
     function bootstrap() {
-      console.info(`[nodeloc-im] v${"0.6.2"} loaded, skin=${SKIN_ID}`);
+      console.info(`[nodeloc-im] v${"0.6.3"} loaded, skin=${SKIN_ID}`);
       if (!document.documentElement) {
         setTimeout(bootstrap, 0);
         return;

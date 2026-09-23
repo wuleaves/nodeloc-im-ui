@@ -683,23 +683,45 @@ async function submitReplyViaApi(raw, replyToPostNumber) {
 function textOf(element) {
   return element?.textContent?.replace(/\s+/g, " ").trim() || "";
 }
-function nativeNodeJoinButton() {
-  return [...document.querySelectorAll("button.community-join-button")]
-    .find((button) => !button.closest(".im-shell, .im-posting-gate")) || null;
+function nodeSlugFromHref(href) {
+  return String(href || "").match(/^\/n\/([^/?#]+)/)?.[1] || "";
+}
+function nativeNodeJoinButton(slug) {
+  const gateButton = [...document.querySelectorAll(".community-posting-gate button")]
+    .find((button) => /加入(?:节点)?/.test(textOf(button)));
+  if (gateButton) return gateButton;
+  if (!slug) return null;
+  const nodePath = `/n/${decodeURIComponent(slug)}`;
+  const links = [...document.querySelectorAll('a[href^="/n/"]')].filter((link) => {
+    try { return decodeURIComponent(new URL(link.href, location.origin).pathname) === nodePath; }
+    catch { return false; }
+  });
+  for (const link of links) {
+    let scope = link.parentElement;
+    for (let depth = 0; scope && depth < 8; depth++, scope = scope.parentElement) {
+      const button = scope.querySelector?.("button.community-join-button");
+      if (button && !button.closest(".im-shell, .im-posting-gate")) return button;
+    }
+  }
+  return null;
 }
 function currentNodeInfo() {
-  const joinButton = nativeNodeJoinButton();
-  const scope = joinButton?.parentElement?.parentElement || document;
-  const link = scope.querySelector?.('a[href^="/n/"]')
-    || document.querySelector('.community-topic-view-compact a[href^="/n/"], a[href^="/n/"]');
+  // IM 话题头部的节点 chip 来自当前 topic JSON，不能拿页面中“任意一个”节点卡片，
+  // 否则加入了 AI 时也可能误拾取另一个节点的加入按钮而拦截每次发送。
+  const link = document.querySelector('.im-chat-chip[href^="/n/"]')
+    || document.querySelector('.community-topic-view-compact a[href^="/n/"]');
   const href = link?.getAttribute("href") || "";
-  const slug = href.match(/^\/n\/([^/?#]+)/)?.[1] || "";
+  const slug = nodeSlugFromHref(href);
+  const joinButton = nativeNodeJoinButton(slug);
+  const scope = joinButton?.parentElement?.parentElement || link?.parentElement || document;
   const label = textOf(link).replace(/^n\//i, "") || slug || "当前节点";
   const scopeText = textOf(scope);
+  const memberClass = slug ? `group-${decodeURIComponent(slug).replace(/[^a-z0-9_-]/gi, "-")}-members` : "";
   return {
     joinButton,
     slug,
     label,
+    isMember: !!memberClass && document.body.classList.contains(memberClass),
     isPublic: /(?:^|\s)公开(?:\s|$)/.test(scopeText) || document.body.classList.contains("community-node-page")
   };
 }
@@ -748,9 +770,29 @@ function showPostingGate(message, options = {}) {
     action.type = "button";
     action.className = "im-posting-gate-primary";
     action.textContent = options.actionLabel || "加入节点";
-    action.addEventListener("click", () => {
-      closePostingGate();
+    action.addEventListener("click", async () => {
+      action.disabled = true;
+      action.textContent = "正在加入…";
+      const hint = overlay.querySelector(".im-posting-gate-hint");
       joinButton.click();
+      let joined = false;
+      for (let attempt = 0; attempt < 20; attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        const current = currentNodeInfo();
+        const nativeLabel = textOf(current.joinButton || joinButton);
+        joined = current.isMember || /已加入|退出节点|离开节点|joined/i.test(nativeLabel)
+          || (!joinButton.isConnected && !current.joinButton);
+        if (joined) break;
+      }
+      if (joined) {
+        action.textContent = "已加入";
+        hint.textContent = "加入成功，现在可以直接发送刚才的回复。";
+        setTimeout(closePostingGate, 700);
+      } else {
+        action.disabled = false;
+        action.textContent = "重试加入节点";
+        hint.textContent = "加入尚未完成，请重试；输入内容仍会保留。";
+      }
     });
     footer.appendChild(action);
   }
@@ -764,17 +806,6 @@ function showPostingGate(message, options = {}) {
   overlay.addEventListener("click", (event) => { if (event.target === overlay) closePostingGate(); });
   document.querySelector(".im-shell")?.appendChild(overlay) || document.body.appendChild(overlay);
   overlay.querySelector(joinButton ? ".im-posting-gate-primary" : ".im-posting-gate-secondary")?.focus();
-}
-function postingPreflight() {
-  const node = currentNodeInfo();
-  if (!node.joinButton) return false;
-  const nodeName = node.slug ? `n/${node.slug}` : node.label;
-  showPostingGate(`${nodeName} 只允许成员发帖和回复，你还不是成员。`, {
-    title: `在 ${node.label} 回复`,
-    hint: node.isPublic ? "这是公开节点，加入后马上就能发言。" : "加入节点后即可发言。",
-    joinButton: node.joinButton
-  });
-  return true;
 }
 function imageFile(file) {
   if (!file) return false;
@@ -904,7 +935,6 @@ async function submitComposer() {
     setComposeStatus("请先打开一个话题", "error");
     return;
   }
-  if (postingPreflight()) return;
   composerState.submitting = true;
   updateComposeSendState();
   setComposeStatus("正在发送…", "busy");
@@ -931,7 +961,11 @@ async function submitComposer() {
       setComposeStatus("暂时无法回复，请查看提示", "error");
       const node = currentNodeInfo();
       showPostingGate(apiError.message || "未知错误", {
-        joinButton: /\u6210\u5458|\u52A0\u5165/.test(apiError.message || "") ? node.joinButton : null
+        title: /\u6210\u5458|\u52A0\u5165/.test(apiError.message || "") ? `在 ${node.label} 回复` : undefined,
+        hint: /\u6210\u5458|\u52A0\u5165/.test(apiError.message || "") && node.isPublic
+          ? "这是公开节点，加入后马上就能发言。"
+          : undefined,
+        joinButton: /\u6210\u5458|\u52A0\u5165/.test(apiError.message || "") && !node.isMember ? node.joinButton : null
       });
     }
   } finally {
