@@ -46,7 +46,7 @@ export function enhanceLotteryCards(root) {
     const clone = widget.cloneNode(true);
     clone.classList.add("im-lottery-widget");
     clone.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
-    clone.querySelectorAll("button").forEach((button) => {
+    clone.querySelectorAll(".lottery-buy-btn").forEach((button) => {
       button.type = "button";
       button.dataset.imNativePlugin = "1";
       button.dataset.imPluginAction = "lottery";
@@ -437,6 +437,17 @@ function bindChatPanelEvents(panel) {
             : pluginAction === "vote-up" ? ".discourse-vote-up-trigger" : ".discourse-vote-down-trigger");
         if (nativeTrigger) {
           nativeTrigger.click();
+          if (pluginAction === "lottery") {
+            // NodeLoc 把购券面板渲染在被 IM 隐藏的原生楼层内；移动真实节点以保留 Ember 事件与校验。
+            setTimeout(() => {
+              const dialog = nativePost.querySelector(".lottery-inline-dialog");
+              const target = nativePlugin.closest(".im-lottery-widget");
+              if (dialog && target) {
+                dialog.classList.add("im-lottery-inline-dialog");
+                target.appendChild(dialog);
+              }
+            }, 0);
+          }
           if (pluginAction.startsWith("vote-")) {
             setTimeout(() => {
               const group = nativePlugin.closest(".im-plugin-vote");

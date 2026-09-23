@@ -2,7 +2,7 @@
 // @name         NodeLoc · IM 外观（钉钉 / 飞书 / 企业微信）
 // @namespace    https://www.nodeloc.com/
 // @author       czm15053, NodeLoc adaptation
-// @version      0.5.4
+// @version      0.5.5
 // @description  NodeLoc 三栏 IM 外观：节点/主题列表、帖子流、回复、搜索、用户与通知，支持三套皮肤和明暗主题。
 // @match        https://www.nodeloc.com/*
 // @noframes
@@ -5851,12 +5851,24 @@ color: #7AA3D6;
       width: min(100%, 680px);
       padding: 0;
       overflow: hidden;
-      border-color: color-mix(in srgb, #8b5cf6 45%, var(--im-border));
-      background: linear-gradient(145deg, color-mix(in srgb, #4c1d95 92%, var(--im-panel)), color-mix(in srgb, #18043d 94%, var(--im-panel)));
+      border: 0;
+      background: transparent;
       color: #f8f5ff;
     }
     .__ROOT_CLASS__ .im-lottery-card .status { color: #b76b00; font-weight: 600; }
-    .__ROOT_CLASS__ .im-lottery-widget { position: relative; padding: 14px; }
+    .__ROOT_CLASS__ .im-lottery-widget {
+      position: relative;
+      box-sizing: border-box;
+      width: 100%;
+      margin: 0 !important;
+      padding: 14px !important;
+      overflow: hidden;
+      border: 1px solid color-mix(in srgb, #8b5cf6 68%, transparent) !important;
+      border-radius: 12px !important;
+      background: linear-gradient(145deg, #3b1d73, #160438) !important;
+      box-shadow: none !important;
+      color: #f8f5ff !important;
+    }
     .__ROOT_CLASS__ .im-lottery-widget .lottery-widget__bg-icons { display: none; }
     .__ROOT_CLASS__ .im-lottery-widget .lottery-widget__header,
     .__ROOT_CLASS__ .im-lottery-widget .lottery-widget__meta,
@@ -5895,7 +5907,20 @@ color: #7AA3D6;
     .__ROOT_CLASS__ .im-lottery-widget .lottery-countdown-value { display: block; font-size: 18px; font-weight: 750; }
     .__ROOT_CLASS__ .im-lottery-widget .lottery-countdown-label { display: block; margin-top: 2px; color: rgba(255,255,255,.58); font-size: 9px; }
     .__ROOT_CLASS__ .im-lottery-widget .lottery-countdown-sep { color: rgba(255,255,255,.5); }
-    .__ROOT_CLASS__ .im-lottery-widget .lottery-participants-list { max-height: 112px; overflow: auto; align-items: flex-start; }
+    .__ROOT_CLASS__ .im-lottery-widget .lottery-participants-list {
+      max-height: 112px;
+      padding-right: 5px;
+      overflow-x: hidden;
+      overflow-y: auto;
+      align-items: flex-start;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,.28) transparent;
+    }
+    .__ROOT_CLASS__ .im-lottery-widget .lottery-participants-list::-webkit-scrollbar { width: 5px; }
+    .__ROOT_CLASS__ .im-lottery-widget .lottery-participants-list::-webkit-scrollbar-track { background: transparent; }
+    .__ROOT_CLASS__ .im-lottery-widget .lottery-participants-list::-webkit-scrollbar-thumb {
+      border-radius: 999px; background: rgba(255,255,255,.28);
+    }
     .__ROOT_CLASS__ .im-lottery-widget .lottery-participant-item {
       position: relative; display: inline-flex; align-items: center; color: #fff; text-decoration: none;
     }
@@ -5909,6 +5934,33 @@ color: #7AA3D6;
     }
     .__ROOT_CLASS__ .im-lottery-widget .lottery-buy-btn:hover { filter: brightness(1.08); }
     .__ROOT_CLASS__ .im-lottery-widget svg { width: 1em; height: 1em; fill: currentColor; }
+    .__ROOT_CLASS__ .im-lottery-widget .im-lottery-inline-dialog {
+      display: flex !important;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 10px;
+      padding: 10px;
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 9px;
+      background: rgba(255,255,255,.09);
+      color: #fff;
+      visibility: visible !important;
+    }
+    .__ROOT_CLASS__ .im-lottery-widget .lottery-inline-dialog__body,
+    .__ROOT_CLASS__ .im-lottery-widget .lottery-inline-dialog__footer,
+    .__ROOT_CLASS__ .im-lottery-widget .lottery-qty-stepper { display: flex; align-items: center; gap: 7px; }
+    .__ROOT_CLASS__ .im-lottery-widget .lottery-qty-stepper__btn,
+    .__ROOT_CLASS__ .im-lottery-widget .lottery-inline-dialog__footer .btn {
+      min-height: 28px; padding: 4px 9px; border: 1px solid rgba(255,255,255,.18); border-radius: 7px;
+      background: rgba(255,255,255,.1); color: #fff; cursor: pointer; font: inherit; font-size: 11px;
+    }
+    .__ROOT_CLASS__ .im-lottery-widget .lottery-inline-dialog__footer .btn-primary { border-color: #d946ef; background: #d946ef; }
+    .__ROOT_CLASS__ .im-lottery-widget .lottery-qty-stepper__val { min-width: 28px; text-align: center; font-weight: 700; }
+    @media (max-width: 760px) {
+      .__ROOT_CLASS__ .im-lottery-widget .im-lottery-inline-dialog { align-items: stretch; flex-direction: column; }
+      .__ROOT_CLASS__ .im-lottery-widget .lottery-inline-dialog__footer { flex-wrap: wrap; }
+    }
     .__ROOT_CLASS__ .im-plugin-prizes { margin: 10px 0; padding: 0; list-style: none; }
     .__ROOT_CLASS__ .im-plugin-prizes li { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; }
     .__ROOT_CLASS__ .im-plugin-winners a { color: var(--im-accent); }
@@ -9411,7 +9463,7 @@ html.im-theme {
       const clone = widget.cloneNode(true);
       clone.classList.add("im-lottery-widget");
       clone.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
-      clone.querySelectorAll("button").forEach((button) => {
+      clone.querySelectorAll(".lottery-buy-btn").forEach((button) => {
         button.type = "button";
         button.dataset.imNativePlugin = "1";
         button.dataset.imPluginAction = "lottery";
@@ -9777,6 +9829,16 @@ html.im-theme {
           const nativeTrigger = nativePost == null ? void 0 : nativePost.querySelector(pluginAction === "reward" ? ".discourse-rewards-add-trigger" : pluginAction === "lottery" ? ".lottery-buy-btn" : pluginAction === "vote-up" ? ".discourse-vote-up-trigger" : ".discourse-vote-down-trigger");
           if (nativeTrigger) {
             nativeTrigger.click();
+            if (pluginAction === "lottery") {
+              setTimeout(() => {
+                const dialog = nativePost.querySelector(".lottery-inline-dialog");
+                const target = nativePlugin.closest(".im-lottery-widget");
+                if (dialog && target) {
+                  dialog.classList.add("im-lottery-inline-dialog");
+                  target.appendChild(dialog);
+                }
+              }, 0);
+            }
             if (pluginAction.startsWith("vote-")) {
               setTimeout(() => {
                 var _a3, _b2, _c, _d;
@@ -17551,7 +17613,7 @@ ${item.label}`;
       }
     }
     function bootstrap() {
-      console.info(`[nodeloc-im] v${"0.5.4"} loaded, skin=${SKIN_ID}`);
+      console.info(`[nodeloc-im] v${"0.5.5"} loaded, skin=${SKIN_ID}`);
       if (!document.documentElement) {
         setTimeout(bootstrap, 0);
         return;
