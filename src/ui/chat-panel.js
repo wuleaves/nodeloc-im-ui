@@ -32,10 +32,35 @@ function afterChatPaint(body) {
   chatHooks.syncAiSummary?.();
 }
 
-const lotteryActionsByWidget = new WeakMap();
+const lotteryBindings = new WeakMap();
 
-/** 抽奖插件的数据摘要不足以完整还原组件，因此复制原生只读内容；操作区直接移动
- * 原生节点（不是克隆），从而完整保留 Ember 状态、事件和购买校验。 */
+function cloneLotteryWidget(widget) {
+  const clone = widget.cloneNode(true);
+  clone.classList.add("im-lottery-widget");
+  clone.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
+  return clone;
+}
+
+function syncLotteryClone(card, widget) {
+  if (!card.isConnected || !widget.isConnected) return;
+  const clone = cloneLotteryWidget(widget);
+  clone.addEventListener("click", (event) => {
+    const control = event.target.closest("button, [role='button'], a");
+    if (!control || !clone.contains(control)) return;
+    const controls = [...clone.querySelectorAll("button, [role='button'], a")];
+    const index = controls.indexOf(control);
+    const nativeControl = [...widget.querySelectorAll("button, [role='button'], a")][index];
+    if (!nativeControl) return;
+    event.preventDefault();
+    event.stopPropagation();
+    nativeControl.click();
+  });
+  card.replaceChildren(clone);
+}
+
+/** 抽奖插件的数据摘要不足以完整还原组件，因此复制原生组件用于展示，但绝不再
+ * 搬走 Ember/Glimmer 管理的操作节点。克隆按钮按位置代理给原生按钮，购买校验、
+ * 数量步进、确认购买和随缘均继续在原生组件上下文内执行。 */
 export function enhanceLotteryCards(root) {
   if (!root) return;
   for (const card of root.querySelectorAll(".im-lottery-card:not([data-im-lottery-enhanced])")) {
@@ -45,18 +70,12 @@ export function enhanceLotteryCards(root) {
     );
     const widget = nativePost?.querySelector(".lottery-widget");
     if (!widget) continue;
-    const nativeActions = widget.querySelector(".lottery-inline-dialog-wrapper") || lotteryActionsByWidget.get(widget);
-    const clone = widget.cloneNode(true);
-    clone.classList.add("im-lottery-widget");
-    clone.querySelectorAll(".lottery-inline-dialog-wrapper").forEach((el) => el.remove());
-    clone.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
-    if (nativeActions) {
-      lotteryActionsByWidget.set(widget, nativeActions);
-      nativeActions.classList.add("im-lottery-native-actions");
-      clone.appendChild(nativeActions);
-    }
+    lotteryBindings.get(card)?.disconnect();
+    syncLotteryClone(card, widget);
+    const observer = new MutationObserver(() => syncLotteryClone(card, widget));
+    observer.observe(widget, { childList: true, subtree: true, attributes: true, characterData: true });
+    lotteryBindings.set(card, observer);
     card.dataset.imLotteryEnhanced = "1";
-    card.replaceChildren(clone);
   }
 }
 
@@ -65,6 +84,8 @@ export function rebindLotteryCards() {
   const body = document.querySelector(".im-chat-body");
   if (!body) return;
   for (const card of body.querySelectorAll(".im-lottery-card")) {
+    lotteryBindings.get(card)?.disconnect();
+    lotteryBindings.delete(card);
     delete card.dataset.imLotteryEnhanced;
   }
   enhanceLotteryCards(body);
