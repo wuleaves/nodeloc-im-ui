@@ -2,7 +2,7 @@
 // @name         NodeLoc · IM 外观（钉钉 / 飞书 / 企业微信）
 // @namespace    https://www.nodeloc.com/
 // @author       czm15053, NodeLoc adaptation
-// @version      0.4.3
+// @version      0.5.0
 // @description  NodeLoc 三栏 IM 外观：节点/主题列表、帖子流、回复、搜索、用户与通知，支持三套皮肤和明暗主题。
 // @match        https://www.nodeloc.com/*
 // @noframes
@@ -12791,6 +12791,23 @@ ${item.label}`;
     }
     syncWindowButton(drawer);
   }
+  function openDetachedChatWindow(drawer) {
+    var _a2;
+    const channelHref = ((_a2 = drawer.querySelector(".c-navbar__channel-title[href]")) == null ? void 0 : _a2.getAttribute("href")) || "/chat";
+    const url = new URL(channelHref, location.origin);
+    url.searchParams.set("nodeloc_im_chat_popup", "1");
+    const popup = window.open(
+      url.pathname + url.search,
+      "nodeloc-im-chat-window",
+      "popup=yes,width=760,height=720,resizable=yes,scrollbars=yes"
+    );
+    if (!popup) {
+      toggleChatWindow(drawer);
+      return;
+    }
+    popup.focus();
+    closeDingtalkChatHub();
+  }
   function beginDrag(event, drawer) {
     if (!document.documentElement.classList.contains("im-chat-hub-windowed")) return;
     if (event.button !== 0 || event.target.closest("button, a, input, textarea, [role='button']")) return;
@@ -12846,7 +12863,7 @@ ${item.label}`;
         event.stopPropagation();
         (_a2 = event.stopImmediatePropagation) == null ? void 0 : _a2.call(event);
         const current = nativeDrawer();
-        if (current) toggleChatWindow(current);
+        if (current) openDetachedChatWindow(current);
         return;
       }
       const close = event.target.closest(
@@ -17199,6 +17216,10 @@ ${item.label}`;
   }
   skinHooks.darkToggle = ensureDarkModeToggle;
   function run() {
+    if (location.pathname.startsWith("/chat") && new URLSearchParams(location.search).get("nodeloc_im_chat_popup") === "1") {
+      document.documentElement.classList.add("im-native-chat-popup");
+      return;
+    }
     migratePrefs();
     onColorThemeChange(syncDarkModeToggle);
     onRailRefresh(syncRail);
@@ -17373,7 +17394,7 @@ ${item.label}`;
       }
     }
     function bootstrap() {
-      console.info(`[nodeloc-im] v${"0.4.3"} loaded, skin=${SKIN_ID}`);
+      console.info(`[nodeloc-im] v${"0.5.0"} loaded, skin=${SKIN_ID}`);
       if (!document.documentElement) {
         setTimeout(bootstrap, 0);
         return;

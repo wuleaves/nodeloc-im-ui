@@ -50,6 +50,23 @@ function toggleChatWindow(drawer) {
   syncWindowButton(drawer);
 }
 
+function openDetachedChatWindow(drawer) {
+  const channelHref = drawer.querySelector(".c-navbar__channel-title[href]")?.getAttribute("href") || "/chat";
+  const url = new URL(channelHref, location.origin);
+  url.searchParams.set("nodeloc_im_chat_popup", "1");
+  const popup = window.open(
+    url.pathname + url.search,
+    "nodeloc-im-chat-window",
+    "popup=yes,width=760,height=720,resizable=yes,scrollbars=yes"
+  );
+  if (!popup) {
+    toggleChatWindow(drawer); // 浏览器拦截弹窗时保留页内小窗降级
+    return;
+  }
+  popup.focus();
+  closeDingtalkChatHub();
+}
+
 function beginDrag(event, drawer) {
   if (!document.documentElement.classList.contains("im-chat-hub-windowed")) return;
   if (event.button !== 0 || event.target.closest("button, a, input, textarea, [role='button']")) return;
@@ -104,7 +121,7 @@ function bindControls() {
     if (windowToggle) {
       event.preventDefault(); event.stopPropagation(); event.stopImmediatePropagation?.();
       const current = nativeDrawer();
-      if (current) toggleChatWindow(current);
+      if (current) openDetachedChatWindow(current);
       return;
     }
       const close = event.target.closest(
