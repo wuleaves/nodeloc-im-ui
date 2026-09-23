@@ -2,7 +2,7 @@
 // @name         NodeLoc · IM 外观（钉钉 / 飞书 / 企业微信）
 // @namespace    https://www.nodeloc.com/
 // @author       czm15053, NodeLoc adaptation
-// @version      0.5.2
+// @version      0.5.3
 // @description  NodeLoc 三栏 IM 外观：节点/主题列表、帖子流、回复、搜索、用户与通知，支持三套皮肤和明暗主题。
 // @match        https://www.nodeloc.com/*
 // @noframes
@@ -5884,10 +5884,20 @@ color: #7AA3D6;
       display: inline-flex; align-items: center; gap: 4px;
       min-height: 24px; padding: 2px 8px; border: 1px solid var(--im-border);
       border-radius: 999px; background: var(--im-panel); color: var(--im-text-2); font: inherit; font-size: 12px;
-      cursor: pointer;
+    }
+    .__ROOT_CLASS__ .im-reaction-chip { cursor: pointer; }
+    .__ROOT_CLASS__ .im-plugin-vote { gap: 0; padding: 0 3px; overflow: hidden; }
+    .__ROOT_CLASS__ .im-plugin-vote-btn {
+      width: 27px; min-height: 26px; padding: 0; border: 0; background: transparent;
+      color: var(--im-text-3); cursor: pointer; font: 700 16px/1 sans-serif;
+    }
+    .__ROOT_CLASS__ .im-plugin-vote-btn:hover,
+    .__ROOT_CLASS__ .im-plugin-vote-btn.active { color: var(--im-accent); background: var(--im-hover); }
+    .__ROOT_CLASS__ .im-plugin-vote-score {
+      min-width: 28px; padding: 0 5px; text-align: center; font-weight: 600; color: var(--im-text-2);
     }
     .__ROOT_CLASS__ .im-reaction-chip:hover,
-    .__ROOT_CLASS__ .im-plugin-vote:hover { border-color: var(--im-accent); color: var(--im-accent); }
+    .__ROOT_CLASS__ .im-plugin-vote:hover { border-color: var(--im-accent); }
     .__ROOT_CLASS__ .im-reaction-chip.active { border-color: var(--im-accent); color: var(--im-accent); }
     .__ROOT_CLASS__ .im-envelope-card { border-color: color-mix(in srgb, #ef4444 40%, var(--im-border)); }
     .__ROOT_CLASS__ .im-envelope-card p { margin: 8px 0 0; color: var(--im-text-3); font-size: 12px; }
@@ -9258,7 +9268,14 @@ html.im-theme {
     const score = Number(post.vote_score);
     const count = Number(post.vote_count);
     if (!Number.isFinite(score) || !score && !count && !post.can_vote) return "";
-    return `<button type="button" class="im-plugin-vote" data-im-native-plugin="1" title="NodeLoc 投票分数 · 在原生视图中赞/踩">支持 ${score > 0 ? "+" : ""}${score}${count && count !== score ? ` · ${count} 票` : ""}</button>`;
+    const userVote = Number(post.user_vote || 0);
+    const upActive = post.user_voted === true || userVote > 0;
+    const downActive = post.user_downvoted === true || userVote < 0;
+    return `<div class="im-plugin-vote" role="group" aria-label="赞踩投票">
+    <button type="button" class="im-plugin-vote-btn${upActive ? " active" : ""}" data-im-native-plugin="1" data-im-plugin-action="vote-up" data-post-number="${Number(post.post_number) || 0}" title="赞">↑</button>
+    <span class="im-plugin-vote-score" title="NodeLoc 投票分数">${score > 0 ? "+" : ""}${score}</span>
+    <button type="button" class="im-plugin-vote-btn${downActive ? " active" : ""}" data-im-native-plugin="1" data-im-plugin-action="vote-down" data-post-number="${Number(post.post_number) || 0}" title="踩">↓</button>
+  </div>`;
   }
   function renderRewards(post) {
     const rewards = Array.isArray(post.rewards) ? post.rewards : [];
@@ -9667,14 +9684,31 @@ html.im-theme {
       if (nativePlugin && panel.contains(nativePlugin)) {
         e.preventDefault();
         e.stopPropagation();
-        if (nativePlugin.dataset.imPluginAction === "reward") {
+        const pluginAction = nativePlugin.dataset.imPluginAction;
+        if (pluginAction === "reward" || pluginAction === "vote-up" || pluginAction === "vote-down") {
           const postNumber = Number(nativePlugin.dataset.postNumber || ((_a2 = nativePlugin.closest(".im-msg")) == null ? void 0 : _a2.dataset.postNumber));
           const nativePost = document.querySelector(
             `article[data-post-number="${postNumber}"], .topic-post[data-post-number="${postNumber}"]`
           );
-          const rewardTrigger = nativePost == null ? void 0 : nativePost.querySelector(".discourse-rewards-add-trigger");
-          if (rewardTrigger) {
-            rewardTrigger.click();
+          const nativeTrigger = nativePost == null ? void 0 : nativePost.querySelector(pluginAction === "reward" ? ".discourse-rewards-add-trigger" : pluginAction === "vote-up" ? ".discourse-vote-up-trigger" : ".discourse-vote-down-trigger");
+          if (nativeTrigger) {
+            nativeTrigger.click();
+            if (pluginAction.startsWith("vote-")) {
+              setTimeout(() => {
+                var _a3, _b2, _c, _d;
+                const group = nativePlugin.closest(".im-plugin-vote");
+                const score = (_b2 = (_a3 = nativePost.querySelector(".vote-control__score")) == null ? void 0 : _a3.textContent) == null ? void 0 : _b2.trim();
+                if (score && group) group.querySelector(".im-plugin-vote-score").textContent = score;
+                (_c = group == null ? void 0 : group.querySelector('[data-im-plugin-action="vote-up"]')) == null ? void 0 : _c.classList.toggle(
+                  "active",
+                  !!nativePost.querySelector(".discourse-vote-up-trigger.vote-control__button--active")
+                );
+                (_d = group == null ? void 0 : group.querySelector('[data-im-plugin-action="vote-down"]')) == null ? void 0 : _d.classList.toggle(
+                  "active",
+                  !!nativePost.querySelector(".discourse-vote-down-trigger.vote-control__button--active")
+                );
+              }, 250);
+            }
             return;
           }
         }
@@ -17433,7 +17467,7 @@ ${item.label}`;
       }
     }
     function bootstrap() {
-      console.info(`[nodeloc-im] v${"0.5.2"} loaded, skin=${SKIN_ID}`);
+      console.info(`[nodeloc-im] v${"0.5.3"} loaded, skin=${SKIN_ID}`);
       if (!document.documentElement) {
         setTimeout(bootstrap, 0);
         return;

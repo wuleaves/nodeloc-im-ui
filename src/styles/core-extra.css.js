@@ -2761,10 +2761,20 @@ color: #7AA3D6;
       display: inline-flex; align-items: center; gap: 4px;
       min-height: 24px; padding: 2px 8px; border: 1px solid var(--im-border);
       border-radius: 999px; background: var(--im-panel); color: var(--im-text-2); font: inherit; font-size: 12px;
-      cursor: pointer;
+    }
+    .__ROOT_CLASS__ .im-reaction-chip { cursor: pointer; }
+    .__ROOT_CLASS__ .im-plugin-vote { gap: 0; padding: 0 3px; overflow: hidden; }
+    .__ROOT_CLASS__ .im-plugin-vote-btn {
+      width: 27px; min-height: 26px; padding: 0; border: 0; background: transparent;
+      color: var(--im-text-3); cursor: pointer; font: 700 16px/1 sans-serif;
+    }
+    .__ROOT_CLASS__ .im-plugin-vote-btn:hover,
+    .__ROOT_CLASS__ .im-plugin-vote-btn.active { color: var(--im-accent); background: var(--im-hover); }
+    .__ROOT_CLASS__ .im-plugin-vote-score {
+      min-width: 28px; padding: 0 5px; text-align: center; font-weight: 600; color: var(--im-text-2);
     }
     .__ROOT_CLASS__ .im-reaction-chip:hover,
-    .__ROOT_CLASS__ .im-plugin-vote:hover { border-color: var(--im-accent); color: var(--im-accent); }
+    .__ROOT_CLASS__ .im-plugin-vote:hover { border-color: var(--im-accent); }
     .__ROOT_CLASS__ .im-reaction-chip.active { border-color: var(--im-accent); color: var(--im-accent); }
     .__ROOT_CLASS__ .im-envelope-card { border-color: color-mix(in srgb, #ef4444 40%, var(--im-border)); }
     .__ROOT_CLASS__ .im-envelope-card p { margin: 8px 0 0; color: var(--im-text-3); font-size: 12px; }

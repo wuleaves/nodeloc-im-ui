@@ -399,14 +399,30 @@ function bindChatPanelEvents(panel) {
     if (nativePlugin && panel.contains(nativePlugin)) {
       e.preventDefault();
       e.stopPropagation();
-      if (nativePlugin.dataset.imPluginAction === "reward") {
+      const pluginAction = nativePlugin.dataset.imPluginAction;
+      if (pluginAction === "reward" || pluginAction === "vote-up" || pluginAction === "vote-down") {
         const postNumber = Number(nativePlugin.dataset.postNumber || nativePlugin.closest(".im-msg")?.dataset.postNumber);
         const nativePost = document.querySelector(
           `article[data-post-number="${postNumber}"], .topic-post[data-post-number="${postNumber}"]`
         );
-        const rewardTrigger = nativePost?.querySelector(".discourse-rewards-add-trigger");
-        if (rewardTrigger) {
-          rewardTrigger.click();
+        const nativeTrigger = nativePost?.querySelector(pluginAction === "reward"
+          ? ".discourse-rewards-add-trigger"
+          : pluginAction === "vote-up" ? ".discourse-vote-up-trigger" : ".discourse-vote-down-trigger");
+        if (nativeTrigger) {
+          nativeTrigger.click();
+          if (pluginAction.startsWith("vote-")) {
+            setTimeout(() => {
+              const group = nativePlugin.closest(".im-plugin-vote");
+              const score = nativePost.querySelector(".vote-control__score")?.textContent?.trim();
+              if (score && group) group.querySelector(".im-plugin-vote-score").textContent = score;
+              group?.querySelector('[data-im-plugin-action="vote-up"]')?.classList.toggle(
+                "active", !!nativePost.querySelector(".discourse-vote-up-trigger.vote-control__button--active")
+              );
+              group?.querySelector('[data-im-plugin-action="vote-down"]')?.classList.toggle(
+                "active", !!nativePost.querySelector(".discourse-vote-down-trigger.vote-control__button--active")
+              );
+            }, 250);
+          }
           return;
         }
       }

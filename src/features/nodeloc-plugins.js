@@ -30,7 +30,14 @@ function renderVote(post) {
   const score = Number(post.vote_score);
   const count = Number(post.vote_count);
   if (!Number.isFinite(score) || (!score && !count && !post.can_vote)) return "";
-  return `<button type="button" class="im-plugin-vote" data-im-native-plugin="1" title="NodeLoc 投票分数 · 在原生视图中赞/踩">支持 ${score > 0 ? "+" : ""}${score}${count && count !== score ? ` · ${count} 票` : ""}</button>`;
+  const userVote = Number(post.user_vote || 0);
+  const upActive = post.user_voted === true || userVote > 0;
+  const downActive = post.user_downvoted === true || userVote < 0;
+  return `<div class="im-plugin-vote" role="group" aria-label="赞踩投票">
+    <button type="button" class="im-plugin-vote-btn${upActive ? " active" : ""}" data-im-native-plugin="1" data-im-plugin-action="vote-up" data-post-number="${Number(post.post_number) || 0}" title="赞">↑</button>
+    <span class="im-plugin-vote-score" title="NodeLoc 投票分数">${score > 0 ? "+" : ""}${score}</span>
+    <button type="button" class="im-plugin-vote-btn${downActive ? " active" : ""}" data-im-native-plugin="1" data-im-plugin-action="vote-down" data-post-number="${Number(post.post_number) || 0}" title="踩">↓</button>
+  </div>`;
 }
 
 function renderRewards(post) {
