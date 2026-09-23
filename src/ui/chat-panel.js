@@ -32,8 +32,10 @@ function afterChatPaint(body) {
   chatHooks.syncAiSummary?.();
 }
 
-/** 抽奖插件的数据摘要不足以完整还原组件，因此从同楼层的原生组件复制只读内容，
- * 再把购买操作代理回仍由 NodeLoc 管理的原生按钮。 */
+const lotteryActionsByWidget = new WeakMap();
+
+/** 抽奖插件的数据摘要不足以完整还原组件，因此复制原生只读内容；操作区直接移动
+ * 原生节点（不是克隆），从而完整保留 Ember 状态、事件和购买校验。 */
 export function enhanceLotteryCards(root) {
   if (!root) return;
   for (const card of root.querySelectorAll(".im-lottery-card:not([data-im-lottery-enhanced])")) {
@@ -43,60 +45,19 @@ export function enhanceLotteryCards(root) {
     );
     const widget = nativePost?.querySelector(".lottery-widget");
     if (!widget) continue;
+    const nativeActions = widget.querySelector(".lottery-inline-dialog-wrapper") || lotteryActionsByWidget.get(widget);
     const clone = widget.cloneNode(true);
     clone.classList.add("im-lottery-widget");
-    clone.querySelectorAll(".lottery-inline-dialog").forEach((el) => el.remove());
+    clone.querySelectorAll(".lottery-inline-dialog-wrapper").forEach((el) => el.remove());
     clone.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
-    clone.querySelectorAll(".lottery-buy-btn").forEach((button) => {
-      button.type = "button";
-      button.dataset.imNativePlugin = "1";
-      button.dataset.imPluginAction = "lottery";
-      button.dataset.postNumber = String(postNumber);
-    });
+    if (nativeActions) {
+      lotteryActionsByWidget.set(widget, nativeActions);
+      nativeActions.classList.add("im-lottery-native-actions");
+      clone.appendChild(nativeActions);
+    }
     card.dataset.imLotteryEnhanced = "1";
     card.replaceChildren(clone);
   }
-}
-
-function mountLotteryPurchaseDialog(nativePost, target) {
-  const nativeDialog = nativePost?.querySelector(".lottery-inline-dialog");
-  if (!nativeDialog || !target) return false;
-  target.querySelector(".im-lottery-inline-dialog")?.remove();
-  const dialog = nativeDialog.cloneNode(true);
-  dialog.classList.add("im-lottery-inline-dialog");
-  dialog.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
-  dialog.addEventListener("click", (event) => {
-    const button = event.target.closest("button");
-    if (!button || !dialog.contains(button)) return;
-    event.preventDefault();
-    event.stopPropagation();
-    let nativeButton = null;
-    let closeAfterClick = false;
-    if (button.classList.contains("lottery-qty-stepper__btn")) {
-      const stepButtons = [...dialog.querySelectorAll(".lottery-qty-stepper__btn")];
-      const nativeStepButtons = [...nativeDialog.querySelectorAll(".lottery-qty-stepper__btn")];
-      nativeButton = nativeStepButtons[stepButtons.indexOf(button)];
-    } else if (button.classList.contains("lottery-random-btn")) {
-      nativeButton = nativeDialog.querySelector(".lottery-random-btn");
-    } else if (button.classList.contains("btn-primary")) {
-      nativeButton = nativeDialog.querySelector(".lottery-inline-dialog__footer .btn-primary");
-    } else {
-      nativeButton = nativeDialog.querySelector(".lottery-inline-dialog__footer .btn-flat:not(.lottery-random-btn)");
-      closeAfterClick = true;
-    }
-    nativeButton?.click();
-    setTimeout(() => {
-      const value = nativeDialog.querySelector(".lottery-qty-stepper__val")?.textContent;
-      const shownValue = dialog.querySelector(".lottery-qty-stepper__val");
-      if (value && shownValue) shownValue.textContent = value;
-      if (!nativeDialog.isConnected || closeAfterClick) {
-        dialog.remove();
-      }
-    }, 80);
-  });
-  target.appendChild(dialog);
-  dialog.scrollIntoView({ block: "nearest", behavior: "smooth" });
-  return true;
 }
 
 /** NodeLoc AnyVideo 在原生 cooked 挂载后才会把空占位转换成播放器。
@@ -468,28 +429,15 @@ function bindChatPanelEvents(panel) {
       e.preventDefault();
       e.stopPropagation();
       const pluginAction = nativePlugin.dataset.imPluginAction;
-      if (pluginAction === "reward" || pluginAction === "lottery" || pluginAction === "vote-up" || pluginAction === "vote-down") {
+      if (pluginAction === "reward" || pluginAction === "vote-up" || pluginAction === "vote-down") {
         const postNumber = Number(nativePlugin.dataset.postNumber || nativePlugin.closest(".im-msg")?.dataset.postNumber);
         const nativePost = document.querySelector(
           `article[data-post-number="${postNumber}"], .topic-post[data-post-number="${postNumber}"]`
         );
         const nativeTrigger = nativePost?.querySelector(pluginAction === "reward"
           ? ".discourse-rewards-add-trigger"
-          : pluginAction === "lottery" ? ".lottery-buy-btn"
-            : pluginAction === "vote-up" ? ".discourse-vote-up-trigger" : ".discourse-vote-down-trigger");
+          : pluginAction === "vote-up" ? ".discourse-vote-up-trigger" : ".discourse-vote-down-trigger");
         if (nativeTrigger) {
-          if (pluginAction === "lottery") {
-            // 原生购券面板位于隐藏楼层；复制可见 UI，并逐项代理回原生控件。
-            const target = nativePlugin.closest(".im-lottery-widget");
-            if (mountLotteryPurchaseDialog(nativePost, target)) return;
-            nativeTrigger.click();
-            let attempts = 0;
-            const waitForDialog = setInterval(() => {
-              attempts += 1;
-              if (mountLotteryPurchaseDialog(nativePost, target) || attempts >= 20) clearInterval(waitForDialog);
-            }, 50);
-            return;
-          }
           nativeTrigger.click();
           if (pluginAction.startsWith("vote-")) {
             setTimeout(() => {

@@ -2811,6 +2811,17 @@ color: #7AA3D6;
     }
     .__ROOT_CLASS__ .im-lottery-widget .lottery-buy-btn:hover { filter: brightness(1.08); }
     .__ROOT_CLASS__ .im-lottery-widget svg { width: 1em; height: 1em; fill: currentColor; }
+    .__ROOT_CLASS__ .im-lottery-widget .im-lottery-native-actions {
+      position: relative;
+      display: flex !important;
+      align-items: center;
+      margin-top: 12px;
+      visibility: visible !important;
+    }
+    .__ROOT_CLASS__ .im-lottery-widget .im-lottery-native-actions .lottery-inline-dialog {
+      z-index: 5;
+      visibility: visible !important;
+    }
     .__ROOT_CLASS__ .im-lottery-widget .im-lottery-inline-dialog {
       display: flex !important;
       align-items: center;
