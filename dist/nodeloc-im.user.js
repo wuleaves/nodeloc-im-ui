@@ -2,7 +2,7 @@
 // @name         NodeLoc · IM 外观（钉钉 / 飞书 / 企业微信）
 // @namespace    https://www.nodeloc.com/
 // @author       czm15053, NodeLoc adaptation
-// @version      0.6.7
+// @version      0.6.8
 // @description  NodeLoc 三栏 IM 外观：节点/主题列表、帖子流、回复、搜索、用户与通知，支持三套皮肤和明暗主题。
 // @match        https://www.nodeloc.com/*
 // @noframes
@@ -3171,6 +3171,15 @@ width: 10px; height: 10px; border-radius: 3px;
   z-index: 2147483100 !important;
   pointer-events: auto !important;
 }
+/* 父级的 pointer-events:none 无法由子元素自行覆盖。确认框出现期间只恢复原生
+   outlet 容器的事件，再继续禁用除弹窗宿主外的页面内容。 */
+.__ROOT_CLASS__.im-native-modal-open.__LOCK_CLASS__ #main-outlet-wrapper,
+.__ROOT_CLASS__.im-native-modal-open.__LOCK_CLASS__ #main-outlet {
+  pointer-events: auto !important;
+}
+.__ROOT_CLASS__.im-native-modal-open.__LOCK_CLASS__ #main-outlet > *:not(.im-native-modal-host) {
+  pointer-events: none !important;
+}
 .__ROOT_CLASS__.__LOCK_CLASS__ #main-outlet > .im-native-modal-host {
   visibility: visible !important;
   width: auto !important;
@@ -3187,6 +3196,15 @@ width: 10px; height: 10px; border-radius: 3px;
 .__ROOT_CLASS__ .im-native-modal-host .modal-backdrop {
   z-index: 2147483101 !important;
   pointer-events: auto !important;
+}
+.__ROOT_CLASS__ .im-native-modal-host .d-modal__container,
+.__ROOT_CLASS__ .im-native-modal-host .modal-inner-container,
+.__ROOT_CLASS__ .im-native-modal-host .modal-content {
+  border: 1px solid var(--im-border) !important;
+  border-radius: 12px !important;
+  background: var(--im-bg) !important;
+  color: var(--im-text) !important;
+  box-shadow: 0 18px 52px rgba(0, 0, 0, .24) !important;
 }
 
 /* NodeLoc AnyVideo 占位在 IM cooked 中恢复为可播放的原生媒体控件 */
@@ -15633,14 +15651,22 @@ ${item.label}`;
   function syncNativeModalHosts() {
     for (const old of document.querySelectorAll(".im-native-modal-host")) old.classList.remove("im-native-modal-host");
     const outlet = document.querySelector("#main-outlet");
-    if (!outlet) return;
-    for (const modal of document.querySelectorAll(".d-modal[role='dialog'], .modal[role='dialog']")) {
+    if (!outlet) {
+      document.documentElement.classList.remove("im-native-modal-open");
+      return;
+    }
+    const modals = document.querySelectorAll(
+      ".d-modal, .modal[role='dialog'], dialog[open], [role='dialog'].d-modal__container"
+    );
+    for (const modal of modals) {
       if (modal.closest(".im-posting-gate, .im-shell")) continue;
       const root2 = outlet.contains(modal) ? outlet : document.body;
       let host = modal;
       while (host.parentElement && host.parentElement !== root2) host = host.parentElement;
       if (host.parentElement === root2) host.classList.add("im-native-modal-host");
     }
+    const open = !!document.querySelector(".im-native-modal-host");
+    document.documentElement.classList.toggle("im-native-modal-open", open);
   }
   window.addEventListener("resize", reSyncEmbedGeometry);
   window.addEventListener("im-layout-change", reSyncEmbedGeometry);
@@ -17701,7 +17727,7 @@ ${item.label}`;
       }
     }
     function bootstrap() {
-      console.info(`[nodeloc-im] v${"0.6.7"} loaded, skin=${SKIN_ID}`);
+      console.info(`[nodeloc-im] v${"0.6.8"} loaded, skin=${SKIN_ID}`);
       if (!document.documentElement) {
         setTimeout(bootstrap, 0);
         return;

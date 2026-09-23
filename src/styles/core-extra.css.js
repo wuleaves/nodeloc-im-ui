@@ -48,6 +48,15 @@ width: 10px; height: 10px; border-radius: 3px;
   z-index: 2147483100 !important;
   pointer-events: auto !important;
 }
+/* 父级的 pointer-events:none 无法由子元素自行覆盖。确认框出现期间只恢复原生
+   outlet 容器的事件，再继续禁用除弹窗宿主外的页面内容。 */
+.__ROOT_CLASS__.im-native-modal-open.__LOCK_CLASS__ #main-outlet-wrapper,
+.__ROOT_CLASS__.im-native-modal-open.__LOCK_CLASS__ #main-outlet {
+  pointer-events: auto !important;
+}
+.__ROOT_CLASS__.im-native-modal-open.__LOCK_CLASS__ #main-outlet > *:not(.im-native-modal-host) {
+  pointer-events: none !important;
+}
 .__ROOT_CLASS__.__LOCK_CLASS__ #main-outlet > .im-native-modal-host {
   visibility: visible !important;
   width: auto !important;
@@ -64,6 +73,15 @@ width: 10px; height: 10px; border-radius: 3px;
 .__ROOT_CLASS__ .im-native-modal-host .modal-backdrop {
   z-index: 2147483101 !important;
   pointer-events: auto !important;
+}
+.__ROOT_CLASS__ .im-native-modal-host .d-modal__container,
+.__ROOT_CLASS__ .im-native-modal-host .modal-inner-container,
+.__ROOT_CLASS__ .im-native-modal-host .modal-content {
+  border: 1px solid var(--im-border) !important;
+  border-radius: 12px !important;
+  background: var(--im-bg) !important;
+  color: var(--im-text) !important;
+  box-shadow: 0 18px 52px rgba(0, 0, 0, .24) !important;
 }
 
 /* NodeLoc AnyVideo 占位在 IM cooked 中恢复为可播放的原生媒体控件 */

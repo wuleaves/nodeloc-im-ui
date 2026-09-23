@@ -124,14 +124,22 @@ function reSyncEmbedGeometry() {
 function syncNativeModalHosts() {
   for (const old of document.querySelectorAll(".im-native-modal-host")) old.classList.remove("im-native-modal-host");
   const outlet = document.querySelector("#main-outlet");
-  if (!outlet) return;
-  for (const modal of document.querySelectorAll(".d-modal[role='dialog'], .modal[role='dialog']")) {
+  if (!outlet) {
+    document.documentElement.classList.remove("im-native-modal-open");
+    return;
+  }
+  const modals = document.querySelectorAll(
+    ".d-modal, .modal[role='dialog'], dialog[open], [role='dialog'].d-modal__container"
+  );
+  for (const modal of modals) {
     if (modal.closest(".im-posting-gate, .im-shell")) continue;
     const root = outlet.contains(modal) ? outlet : document.body;
     let host = modal;
     while (host.parentElement && host.parentElement !== root) host = host.parentElement;
     if (host.parentElement === root) host.classList.add("im-native-modal-host");
   }
+  const open = !!document.querySelector(".im-native-modal-host");
+  document.documentElement.classList.toggle("im-native-modal-open", open);
 }
 window.addEventListener("resize", reSyncEmbedGeometry);
 window.addEventListener("im-layout-change", reSyncEmbedGeometry); // 侧栏/列表拖宽时跟随
