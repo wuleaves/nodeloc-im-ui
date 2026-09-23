@@ -2,7 +2,7 @@
 // @name         NodeLoc · IM 外观（钉钉 / 飞书 / 企业微信）
 // @namespace    https://www.nodeloc.com/
 // @author       czm15053, NodeLoc adaptation
-// @version      0.4.2
+// @version      0.4.3
 // @description  NodeLoc 三栏 IM 外观：节点/主题列表、帖子流、回复、搜索、用户与通知，支持三套皮肤和明暗主题。
 // @match        https://www.nodeloc.com/*
 // @noframes
@@ -12747,6 +12747,7 @@ ${item.label}`;
   let controlsBound = false;
   let drawerObserver = null;
   let dragging = null;
+  let drawerGoneTimer = null;
   const WINDOW_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 9h8M8 13h5"/></svg>`;
   const FULL_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M21 16v5h-5M8 21H3v-5"/></svg>`;
   function nativeDrawer() {
@@ -12817,8 +12818,19 @@ ${item.label}`;
       drawerObserver = new MutationObserver(() => {
         if (!document.documentElement.classList.contains(HUB_CLASS)) return;
         const current = nativeDrawer();
-        if (current && !current.classList.contains("im-dingtalk-chat-hub")) decorateDrawer(current);
-        else if (current) syncWindowButton(current);
+        if (current) {
+          clearTimeout(drawerGoneTimer);
+          drawerGoneTimer = null;
+          if (!current.classList.contains("im-dingtalk-chat-hub")) decorateDrawer(current);
+          else syncWindowButton(current);
+          return;
+        }
+        clearTimeout(drawerGoneTimer);
+        drawerGoneTimer = setTimeout(() => {
+          if (document.documentElement.classList.contains(HUB_CLASS) && !nativeDrawer()) {
+            closeDingtalkChatHub({ closeNative: false });
+          }
+        }, 80);
       });
       drawerObserver.observe(document.body, { childList: true, subtree: true });
     }
@@ -12838,7 +12850,7 @@ ${item.label}`;
         return;
       }
       const close = event.target.closest(
-        '.im-dingtalk-chat-hub .c-navbar__toggle-drawer-button, .im-dingtalk-chat-hub button[title*="关闭聊天"], .im-dingtalk-chat-hub button[aria-label*="关闭聊天"]'
+        '.im-dingtalk-chat-hub .c-navbar__toggle-drawer-button, .im-dingtalk-chat-hub .c-navbar__close-drawer-button, .im-dingtalk-chat-hub button[title="关闭"], .im-dingtalk-chat-hub button[aria-label="关闭"], .im-dingtalk-chat-hub button[title*="关闭聊天"], .im-dingtalk-chat-hub button[aria-label*="关闭聊天"]'
       );
       if (close) setTimeout(() => closeDingtalkChatHub({ closeNative: false }), 0);
     }, true);
@@ -12865,6 +12877,8 @@ ${item.label}`;
     var _a2, _b2, _c;
     const drawer = nativeDrawer();
     document.documentElement.classList.remove(HUB_CLASS, "im-chat-hub-windowed");
+    clearTimeout(drawerGoneTimer);
+    drawerGoneTimer = null;
     endDrag();
     drawerObserver == null ? void 0 : drawerObserver.disconnect();
     drawerObserver = null;
@@ -17359,7 +17373,7 @@ ${item.label}`;
       }
     }
     function bootstrap() {
-      console.info(`[nodeloc-im] v${"0.4.2"} loaded, skin=${SKIN_ID}`);
+      console.info(`[nodeloc-im] v${"0.4.3"} loaded, skin=${SKIN_ID}`);
       if (!document.documentElement) {
         setTimeout(bootstrap, 0);
         return;

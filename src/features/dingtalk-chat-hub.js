@@ -2,6 +2,7 @@ const HUB_CLASS = "im-chat-hub-open";
 let controlsBound = false;
 let drawerObserver = null;
 let dragging = null;
+let drawerGoneTimer = null;
 
 const WINDOW_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 9h8M8 13h5"/></svg>`;
 const FULL_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M21 16v5h-5M8 21H3v-5"/></svg>`;
@@ -77,8 +78,19 @@ function decorateDrawer(drawer) {
     drawerObserver = new MutationObserver(() => {
       if (!document.documentElement.classList.contains(HUB_CLASS)) return;
       const current = nativeDrawer();
-      if (current && !current.classList.contains("im-dingtalk-chat-hub")) decorateDrawer(current);
-      else if (current) syncWindowButton(current);
+      if (current) {
+        clearTimeout(drawerGoneTimer);
+        drawerGoneTimer = null;
+        if (!current.classList.contains("im-dingtalk-chat-hub")) decorateDrawer(current);
+        else syncWindowButton(current);
+        return;
+      }
+      clearTimeout(drawerGoneTimer);
+      drawerGoneTimer = setTimeout(() => {
+        if (document.documentElement.classList.contains(HUB_CLASS) && !nativeDrawer()) {
+          closeDingtalkChatHub({ closeNative: false });
+        }
+      }, 80);
     });
     drawerObserver.observe(document.body, { childList: true, subtree: true });
   }
@@ -95,9 +107,11 @@ function bindControls() {
       if (current) toggleChatWindow(current);
       return;
     }
-    const close = event.target.closest(
-      ".im-dingtalk-chat-hub .c-navbar__toggle-drawer-button, " +
-      '.im-dingtalk-chat-hub button[title*="关闭聊天"], .im-dingtalk-chat-hub button[aria-label*="关闭聊天"]'
+      const close = event.target.closest(
+        ".im-dingtalk-chat-hub .c-navbar__toggle-drawer-button, " +
+        ".im-dingtalk-chat-hub .c-navbar__close-drawer-button, " +
+        '.im-dingtalk-chat-hub button[title="关闭"], .im-dingtalk-chat-hub button[aria-label="关闭"], ' +
+        '.im-dingtalk-chat-hub button[title*="关闭聊天"], .im-dingtalk-chat-hub button[aria-label*="关闭聊天"]'
     );
     if (close) setTimeout(() => closeDingtalkChatHub({ closeNative: false }), 0);
   }, true);
@@ -125,6 +139,7 @@ function waitForDrawer(attempt = 0) {
 export function closeDingtalkChatHub({ closeNative = true } = {}) {
   const drawer = nativeDrawer();
   document.documentElement.classList.remove(HUB_CLASS, "im-chat-hub-windowed");
+  clearTimeout(drawerGoneTimer); drawerGoneTimer = null;
   endDrag();
   drawerObserver?.disconnect(); drawerObserver = null;
   drawer?.classList.remove("im-dingtalk-chat-hub");
