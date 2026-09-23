@@ -2,7 +2,7 @@
 // @name         NodeLoc · IM 外观（钉钉 / 飞书 / 企业微信）
 // @namespace    https://www.nodeloc.com/
 // @author       czm15053, NodeLoc adaptation
-// @version      0.4.0
+// @version      0.4.1
 // @description  NodeLoc 三栏 IM 外观：节点/主题列表、帖子流、回复、搜索、用户与通知，支持三套皮肤和明暗主题。
 // @match        https://www.nodeloc.com/*
 // @noframes
@@ -728,6 +728,7 @@
       z-index: 470 !important; pointer-events: none !important;
     }
     .__ROOT_CLASS__.im-chat-hub-open .chat-drawer.im-dingtalk-chat-hub {
+      display: flex !important; flex-direction: column !important;
       position: absolute !important; inset: 0 !important;
       width: 100% !important; height: 100% !important;
       max-width: none !important; max-height: none !important;
@@ -742,6 +743,7 @@
     }
     .__ROOT_CLASS__.im-chat-hub-open .im-dingtalk-chat-hub .chat-drawer-container,
     .__ROOT_CLASS__.im-chat-hub-open .im-dingtalk-chat-hub .chat-drawer-content {
+      display: flex !important; flex-direction: column !important; flex: 1 1 auto !important;
       width: 100% !important; height: 100% !important; max-width: none !important;
       border: 0 !important; border-radius: 0 !important; background: var(--im-bg) !important;
     }
@@ -17254,7 +17256,7 @@ ${item.label}`;
       }
     }
     function bootstrap() {
-      console.info(`[nodeloc-im] v${"0.4.0"} loaded, skin=${SKIN_ID}`);
+      console.info(`[nodeloc-im] v${"0.4.1"} loaded, skin=${SKIN_ID}`);
       if (!document.documentElement) {
         setTimeout(bootstrap, 0);
         return;

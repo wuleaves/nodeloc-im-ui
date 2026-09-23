@@ -549,6 +549,7 @@ export const CSS_DD = String.raw`
       z-index: 470 !important; pointer-events: none !important;
     }
     .__ROOT_CLASS__.im-chat-hub-open .chat-drawer.im-dingtalk-chat-hub {
+      display: flex !important; flex-direction: column !important;
       position: absolute !important; inset: 0 !important;
       width: 100% !important; height: 100% !important;
       max-width: none !important; max-height: none !important;
@@ -563,6 +564,7 @@ export const CSS_DD = String.raw`
     }
     .__ROOT_CLASS__.im-chat-hub-open .im-dingtalk-chat-hub .chat-drawer-container,
     .__ROOT_CLASS__.im-chat-hub-open .im-dingtalk-chat-hub .chat-drawer-content {
+      display: flex !important; flex-direction: column !important; flex: 1 1 auto !important;
       width: 100% !important; height: 100% !important; max-width: none !important;
       border: 0 !important; border-radius: 0 !important; background: var(--im-bg) !important;
     }
