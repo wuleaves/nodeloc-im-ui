@@ -2,7 +2,7 @@
 // @name         NodeLoc · IM 外观（钉钉 / 飞书 / 企业微信）
 // @namespace    https://www.nodeloc.com/
 // @author       czm15053, NodeLoc adaptation
-// @version      0.1.0
+// @version      0.2.0
 // @description  NodeLoc 三栏 IM 外观：节点/主题列表、帖子流、回复、搜索、用户与通知，支持三套皮肤和明暗主题。
 // @match        https://www.nodeloc.com/*
 // @noframes
@@ -567,6 +567,81 @@
     .im-rail-bottom { width: 100%; flex-shrink: 0; padding: 4px 8px 0; }
     .im-rail-more.is-on { color: var(--im-blue); background: #FFFFFF; box-shadow: 0 1px 4px rgba(31,35,41,.06); }
     .im-rail-more.is-on svg { color: var(--im-blue); }
+
+    /* ---------- 钉钉原生风工作台：NodeLoc 侧栏分组改为应用宫格 ---------- */
+    .im-dd-workbench {
+      position: fixed;
+      left: var(--im-nav); right: 0; top: var(--im-header-h); bottom: 0;
+      z-index: 455;
+      display: flex; flex-direction: column;
+      background: var(--im-bg);
+      color: var(--im-text);
+      font-family: var(--im-font);
+      box-sizing: border-box;
+    }
+    .im-dd-workbench, .im-dd-workbench * { box-sizing: border-box; }
+    .im-dd-workbench-head {
+      min-height: 86px; padding: 18px 30px;
+      display: flex; align-items: center; gap: 18px;
+      border-bottom: 1px solid var(--im-border);
+      background: var(--im-bg);
+    }
+    .im-dd-workbench-head > div { min-width: 150px; }
+    .im-dd-workbench-head h1 { margin: 0; font-size: 22px; line-height: 1.25; color: var(--im-text); }
+    .im-dd-workbench-head p { margin: 5px 0 0; font-size: 12px; color: var(--im-text-3); }
+    .im-dd-workbench-search-wrap {
+      width: min(360px, 38vw); height: 36px; margin-left: auto;
+      display: flex; align-items: center; gap: 8px;
+      padding: 0 13px; border-radius: 18px;
+      background: var(--im-hover); color: var(--im-text-3);
+    }
+    .im-dd-workbench-search-wrap svg { width: 17px; height: 17px; flex-shrink: 0; }
+    .im-dd-workbench-search {
+      flex: 1; min-width: 0; height: 100%; margin: 0; padding: 0;
+      border: 0; outline: 0; background: transparent;
+      color: var(--im-text); font: inherit; font-size: 13px;
+    }
+    .im-dd-workbench-close {
+      width: 34px; height: 34px; padding: 0; border: 0; border-radius: 9px;
+      background: transparent; color: var(--im-text-3); cursor: pointer;
+      font: 24px/1 var(--im-font);
+    }
+    .im-dd-workbench-close:hover { background: var(--im-hover); color: var(--im-text); }
+    .im-dd-workbench-body {
+      flex: 1; overflow: auto; padding: 24px 30px 42px;
+      background: var(--im-bg);
+    }
+    .im-dd-workbench-loading { padding: 60px 0; text-align: center; color: var(--im-text-3); }
+    .im-dd-app-section { margin: 0 0 30px; }
+    .im-dd-app-section h2 { margin: 0 0 16px; font-size: 16px; font-weight: 600; color: var(--im-text); }
+    .im-dd-app-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(106px, 1fr));
+      gap: 22px 18px;
+      max-width: 960px;
+    }
+    .im-dd-app {
+      min-width: 0; padding: 8px 4px; border: 0; border-radius: 12px;
+      display: flex; flex-direction: column; align-items: center; gap: 9px;
+      background: transparent; color: var(--im-text); cursor: pointer;
+      font: inherit;
+    }
+    .im-dd-app:hover { background: var(--im-hover); }
+    .im-dd-app-icon {
+      width: 58px; height: 58px; border-radius: 14px;
+      display: grid; place-items: center;
+      color: var(--app-color); background: var(--app-bg);
+      box-shadow: inset 0 0 0 1px rgba(31,35,41,.035);
+    }
+    .im-dd-app-icon svg { width: 30px; height: 30px; }
+    .im-dd-app-name {
+      width: 100%; min-height: 34px;
+      display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+      overflow: hidden; text-align: center;
+      color: var(--im-text); font-size: 13px; line-height: 17px;
+    }
+    .__ROOT_CLASS__.__DARK_CLASS__ .im-dd-app-icon { filter: brightness(.88) saturate(.9); }
+
     /* 右边缘拖拽柄：左右拉伸 rail */
     .im-rail-resizer {
       position: fixed; top: var(--im-header-h); bottom: 0;
@@ -1127,6 +1202,9 @@
       .__ROOT_CLASS__.__LOCK_CLASS__:not(.im-topic-open) .im-chat-panel { display: none; }
       .__ROOT_CLASS__.__LOCK_CLASS__ .im-chat-panel { left: var(--im-nav); }
       .__ROOT_CLASS__.__LOCK_CLASS__ #reply-control { left: calc(var(--im-nav) + 12px) !important; right: 12px !important; }
+      .im-dd-workbench-head { padding: 14px 18px; }
+      .im-dd-workbench-body { padding: 20px 18px 34px; }
+      .im-dd-app-grid { grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 16px 10px; }
     }
 
     /* ---------- 深色模式 token + 硬编码覆盖 ---------- */
@@ -12256,6 +12334,150 @@ ${data.raw}
     });
     registerExtraSources();
   }
+  const SECTION_SPECS = [
+    { title: "游戏", controls: ["sidebar-section-content-discourse-apps-games"], icon: "rocket", fallback: [["游戏中心", "/apps"]] },
+    { title: "小程序", controls: ["sidebar-section-content-discourse-apps-applets"], icon: "apps", fallback: [["全部小程序", "/apps"]] },
+    { title: "自定义信息流", controls: ["sidebar-section-content-custom-feeds"], icon: "spark", fallback: [["最新话题", "/latest"], ["热门话题", "/hot"]] },
+    { title: "节点", controls: ["sidebar-section-content-communities", "sidebar-section-content-categories"], icon: "grid", fallback: [["全部节点", "/nodes"], ["我的节点", "/my-nodes"]] },
+    { title: "标签", controls: ["sidebar-section-content-tags"], icon: "bookmark", fallback: [["全部标签", "/tags"]] },
+    { title: "资源", controls: ["sidebar-section-content-resources"], icon: "book", fallback: [["NodeLoc 文档", "https://docs.nodeloc.com"], ["社区指南", "/guidelines"]] }
+  ];
+  const APP_COLORS = [
+    ["#E7F2FF", "#1683FF"],
+    ["#E8FBF4", "#08A870"],
+    ["#FFF4E1", "#F59A23"],
+    ["#F0ECFF", "#7655E7"],
+    ["#FFECEC", "#E85656"],
+    ["#E8F9FF", "#1B9FD6"]
+  ];
+  function safeHref(raw) {
+    const href = String(raw || "").trim();
+    if (href.startsWith("/")) return href;
+    try {
+      const url = new URL(href, location.origin);
+      if (url.protocol === "https:" || url.protocol === "http:") return url.href;
+    } catch {
+    }
+    return "";
+  }
+  function dedupe(items) {
+    const seen = /* @__PURE__ */ new Set();
+    return items.filter((item) => {
+      const key = `${item.href}
+${item.label}`;
+      if (!item.href || !item.label || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+  async function expandNativeSections() {
+    const buttons = SECTION_SPECS.flatMap((spec) => spec.controls).map((id) => document.querySelector(`.sidebar-section-header[aria-controls="${id}"]`)).filter(Boolean);
+    for (const button of buttons) {
+      if (button.getAttribute("aria-expanded") !== "true") button.click();
+    }
+    if (buttons.length) await new Promise((resolve) => setTimeout(resolve, 180));
+  }
+  function readNativeSection(spec) {
+    const items = [];
+    for (const id of spec.controls) {
+      const root2 = document.getElementById(id);
+      if (!root2) continue;
+      for (const link of root2.querySelectorAll("a[href]")) {
+        const label = (link.textContent || link.getAttribute("aria-label") || "").replace(/\s+/g, " ").trim();
+        const href = safeHref(link.getAttribute("href"));
+        if (label && href) items.push({ label, href });
+      }
+    }
+    const nativeItems = dedupe(items);
+    if (nativeItems.length) return nativeItems;
+    return spec.fallback.map(([label, href]) => ({ label, href }));
+  }
+  function appHtml(item, spec, index) {
+    const [bg, color] = APP_COLORS[index % APP_COLORS.length];
+    const icon = ICONS[spec.icon] || ICONS.apps;
+    return `<button type="button" class="im-dd-app" data-href="${escapeHtml(item.href)}" data-label="${escapeHtml(item.label.toLowerCase())}">
+    <span class="im-dd-app-icon" style="--app-bg:${bg};--app-color:${color}">${icon}</span>
+    <span class="im-dd-app-name">${escapeHtml(item.label)}</span>
+  </button>`;
+  }
+  function renderSections(panel) {
+    const body = panel.querySelector(".im-dd-workbench-body");
+    if (!body) return;
+    body.innerHTML = SECTION_SPECS.map((spec, sectionIndex) => {
+      const items = readNativeSection(spec);
+      return `<section class="im-dd-app-section" data-section="${escapeHtml(spec.title)}">
+      <h2>${escapeHtml(spec.title)}</h2>
+      <div class="im-dd-app-grid">${items.map((item, index) => appHtml(item, spec, sectionIndex + index)).join("")}</div>
+    </section>`;
+    }).join("");
+  }
+  function bindWorkbench(panel) {
+    var _a2, _b2;
+    if (panel.dataset.bound === "1") return;
+    panel.dataset.bound = "1";
+    (_a2 = panel.querySelector(".im-dd-workbench-close")) == null ? void 0 : _a2.addEventListener("click", closeDingtalkWorkbench);
+    (_b2 = panel.querySelector(".im-dd-workbench-search")) == null ? void 0 : _b2.addEventListener("input", (event) => {
+      const query = event.currentTarget.value.trim().toLowerCase();
+      for (const app of panel.querySelectorAll(".im-dd-app")) {
+        app.hidden = !!query && !String(app.dataset.label || "").includes(query);
+      }
+      for (const section of panel.querySelectorAll(".im-dd-app-section")) {
+        section.hidden = !section.querySelector(".im-dd-app:not([hidden])");
+      }
+    });
+    panel.addEventListener("click", (event) => {
+      const app = event.target.closest(".im-dd-app[data-href]");
+      if (!app || !panel.contains(app)) return;
+      const href = safeHref(app.dataset.href);
+      if (!href) return;
+      closeDingtalkWorkbench();
+      if (/^https?:/i.test(href) && new URL(href, location.origin).origin !== location.origin) {
+        window.open(href, "_blank", "noopener,noreferrer");
+        return;
+      }
+      navigateInApp(href);
+    });
+  }
+  function closeDingtalkWorkbench() {
+    var _a2, _b2;
+    (_a2 = document.querySelector(".im-dd-workbench")) == null ? void 0 : _a2.remove();
+    document.documentElement.classList.remove("im-workbench-open");
+    (_b2 = document.querySelector('.im-rail-item[data-rail-key="work"]')) == null ? void 0 : _b2.classList.remove("active");
+    const more = document.querySelector(".im-rail-more");
+    more == null ? void 0 : more.classList.remove("is-on");
+    if (more) {
+      more.title = "打开工作台";
+      more.setAttribute("aria-expanded", "false");
+    }
+  }
+  async function openDingtalkWorkbench() {
+    let panel = document.querySelector(".im-dd-workbench");
+    if (!panel) {
+      panel = document.createElement("section");
+      panel.className = "im-dd-workbench";
+      panel.setAttribute("aria-label", "工作台");
+      panel.innerHTML = `<header class="im-dd-workbench-head">
+      <div><h1>工作台</h1><p>NodeLoc 应用与社区入口</p></div>
+      <label class="im-dd-workbench-search-wrap">${ICONS.search}<input class="im-dd-workbench-search" type="search" placeholder="搜索应用" aria-label="搜索应用"></label>
+      <button type="button" class="im-dd-workbench-close" aria-label="关闭工作台">×</button>
+    </header>
+    <div class="im-dd-workbench-body"><div class="im-dd-workbench-loading">正在加载应用…</div></div>`;
+      document.body.appendChild(panel);
+      bindWorkbench(panel);
+    }
+    document.documentElement.classList.add("im-workbench-open");
+    document.querySelectorAll(".im-rail-item[data-rail-key]").forEach((button) => {
+      button.classList.toggle("active", button.dataset.railKey === "work");
+    });
+    const more = document.querySelector(".im-rail-more");
+    more == null ? void 0 : more.classList.add("is-on");
+    if (more) {
+      more.title = "工作台已打开";
+      more.setAttribute("aria-expanded", "true");
+    }
+    await expandNativeSections();
+    if (document.body.contains(panel)) renderSections(panel);
+  }
   const railRefreshListeners = [];
   function onRailRefresh(fn) {
     railRefreshListeners.push(fn);
@@ -12443,6 +12665,12 @@ ${data.raw}
       const btn = e.target.closest(".im-rail-item[data-rail-key]");
       if (!btn || !items.contains(btn)) return;
       const key = btn.dataset.railKey;
+      if (SKIN_ID === "dingtalk" && key === "work") {
+        setNav2Open(false);
+        openDingtalkWorkbench();
+        return;
+      }
+      if (SKIN_ID === "dingtalk") closeDingtalkWorkbench();
       if (key === "chats") {
         navigateInApp("/chat/channels");
         return;
@@ -12480,10 +12708,17 @@ ${data.raw}
     more.type = "button";
     more.className = "im-rail-item im-rail-more";
     more.dataset.railKey = "more";
-    more.title = "展开话题导航";
+    more.title = SKIN_ID === "dingtalk" ? "打开工作台" : "展开话题导航";
     more.setAttribute("aria-expanded", "false");
     more.innerHTML = `${ICONS.more}<span>更多</span>`;
-    more.addEventListener("click", () => setNav2Open(!isNav2Open()));
+    more.addEventListener("click", () => {
+      if (SKIN_ID === "dingtalk") {
+        setNav2Open(false);
+        openDingtalkWorkbench();
+        return;
+      }
+      setNav2Open(!isNav2Open());
+    });
     bottom.appendChild(more);
     rail.appendChild(bottom);
     document.body.appendChild(rail);
@@ -16480,14 +16715,16 @@ ${data.raw}
       }
     }
     function removePanels() {
-      var _a2, _b2, _c, _d, _e, _f, _g;
-      (_a2 = document.querySelector(".im-list-panel")) == null ? void 0 : _a2.remove();
-      (_b2 = document.querySelector(".im-chat-panel")) == null ? void 0 : _b2.remove();
-      (_c = document.querySelector(".im-rail")) == null ? void 0 : _c.remove();
-      (_d = document.querySelector(".im-rail-resizer")) == null ? void 0 : _d.remove();
-      (_e = document.querySelector(".im-list-resizer")) == null ? void 0 : _e.remove();
-      (_f = document.querySelector(".im-strip")) == null ? void 0 : _f.remove();
-      (_g = document.querySelector(".im-titlebar")) == null ? void 0 : _g.remove();
+      var _a2, _b2, _c, _d, _e, _f, _g, _h;
+      (_a2 = document.querySelector(".im-dd-workbench")) == null ? void 0 : _a2.remove();
+      document.documentElement.classList.remove("im-workbench-open");
+      (_b2 = document.querySelector(".im-list-panel")) == null ? void 0 : _b2.remove();
+      (_c = document.querySelector(".im-chat-panel")) == null ? void 0 : _c.remove();
+      (_d = document.querySelector(".im-rail")) == null ? void 0 : _d.remove();
+      (_e = document.querySelector(".im-rail-resizer")) == null ? void 0 : _e.remove();
+      (_f = document.querySelector(".im-list-resizer")) == null ? void 0 : _f.remove();
+      (_g = document.querySelector(".im-strip")) == null ? void 0 : _g.remove();
+      (_h = document.querySelector(".im-titlebar")) == null ? void 0 : _h.remove();
     }
     let scheduled = false;
     let lastPath = null;
@@ -16620,7 +16857,7 @@ ${data.raw}
       }
     }
     function bootstrap() {
-      console.info(`[nodeloc-im] v${"0.1.0"} loaded, skin=${SKIN_ID}`);
+      console.info(`[nodeloc-im] v${"0.2.0"} loaded, skin=${SKIN_ID}`);
       if (!document.documentElement) {
         setTimeout(bootstrap, 0);
         return;

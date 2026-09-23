@@ -13,6 +13,7 @@ import { listState } from "../state/list-state.js";
 import { getViewMode } from "../state/view-state.js";
 import { avatarColor, avatarLetter } from "./shared/avatars.js";
 import { hasSource, setActiveRailKey } from "./list-sources.js";
+import { closeDingtalkWorkbench, openDingtalkWorkbench } from "../features/dingtalk-workbench.js";
 import { navigateInApp } from "../bridge/router.js";
 
 // rail 刷新（角标等）由皮肤分派层注册，避免 ui → skins 反向依赖
@@ -221,6 +222,12 @@ export function ensureRailDingtalk() {
     const btn = e.target.closest(".im-rail-item[data-rail-key]");
     if (!btn || !items.contains(btn)) return;
     const key = btn.dataset.railKey;
+    if (SKIN_ID === "dingtalk" && key === "work") {
+      setNav2Open(false);
+      openDingtalkWorkbench();
+      return;
+    }
+    if (SKIN_ID === "dingtalk") closeDingtalkWorkbench();
     if (key === "chats") {
       // 原生 /chat 会直接打开最近频道（像和某人的单聊）；频道列表页才是「聊天列表」
       navigateInApp("/chat/channels");
@@ -265,7 +272,7 @@ export function ensureRailDingtalk() {
     });
   }
 
-  // 底部「更多」：展开 / 收起话题导航（原生侧栏）
+  // 钉钉：原生 Discourse 侧栏内容较重，收进工作台应用宫格；其余皮肤保留原侧栏。
   const bottom = document.createElement("div");
   bottom.className = "im-rail-bottom";
   ensureRailFold(bottom);
@@ -274,10 +281,17 @@ export function ensureRailDingtalk() {
   more.type = "button";
   more.className = "im-rail-item im-rail-more";
   more.dataset.railKey = "more";
-  more.title = "展开话题导航";
+  more.title = SKIN_ID === "dingtalk" ? "打开工作台" : "展开话题导航";
   more.setAttribute("aria-expanded", "false");
   more.innerHTML = `${ICONS.more}<span>更多</span>`;
-  more.addEventListener("click", () => setNav2Open(!isNav2Open()));
+  more.addEventListener("click", () => {
+    if (SKIN_ID === "dingtalk") {
+      setNav2Open(false);
+      openDingtalkWorkbench();
+      return;
+    }
+    setNav2Open(!isNav2Open());
+  });
   bottom.appendChild(more);
   rail.appendChild(bottom);
 

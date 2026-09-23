@@ -139,6 +139,8 @@ export function run() {
 
 
   function removePanels() {
+    document.querySelector(".im-dd-workbench")?.remove();
+    document.documentElement.classList.remove("im-workbench-open");
     document.querySelector(".im-list-panel")?.remove();
     document.querySelector(".im-chat-panel")?.remove();
     document.querySelector(".im-rail")?.remove();

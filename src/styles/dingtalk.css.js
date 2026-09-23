@@ -388,6 +388,81 @@ export const CSS_DD = String.raw`
     .im-rail-bottom { width: 100%; flex-shrink: 0; padding: 4px 8px 0; }
     .im-rail-more.is-on { color: var(--im-blue); background: #FFFFFF; box-shadow: 0 1px 4px rgba(31,35,41,.06); }
     .im-rail-more.is-on svg { color: var(--im-blue); }
+
+    /* ---------- 钉钉原生风工作台：NodeLoc 侧栏分组改为应用宫格 ---------- */
+    .im-dd-workbench {
+      position: fixed;
+      left: var(--im-nav); right: 0; top: var(--im-header-h); bottom: 0;
+      z-index: 455;
+      display: flex; flex-direction: column;
+      background: var(--im-bg);
+      color: var(--im-text);
+      font-family: var(--im-font);
+      box-sizing: border-box;
+    }
+    .im-dd-workbench, .im-dd-workbench * { box-sizing: border-box; }
+    .im-dd-workbench-head {
+      min-height: 86px; padding: 18px 30px;
+      display: flex; align-items: center; gap: 18px;
+      border-bottom: 1px solid var(--im-border);
+      background: var(--im-bg);
+    }
+    .im-dd-workbench-head > div { min-width: 150px; }
+    .im-dd-workbench-head h1 { margin: 0; font-size: 22px; line-height: 1.25; color: var(--im-text); }
+    .im-dd-workbench-head p { margin: 5px 0 0; font-size: 12px; color: var(--im-text-3); }
+    .im-dd-workbench-search-wrap {
+      width: min(360px, 38vw); height: 36px; margin-left: auto;
+      display: flex; align-items: center; gap: 8px;
+      padding: 0 13px; border-radius: 18px;
+      background: var(--im-hover); color: var(--im-text-3);
+    }
+    .im-dd-workbench-search-wrap svg { width: 17px; height: 17px; flex-shrink: 0; }
+    .im-dd-workbench-search {
+      flex: 1; min-width: 0; height: 100%; margin: 0; padding: 0;
+      border: 0; outline: 0; background: transparent;
+      color: var(--im-text); font: inherit; font-size: 13px;
+    }
+    .im-dd-workbench-close {
+      width: 34px; height: 34px; padding: 0; border: 0; border-radius: 9px;
+      background: transparent; color: var(--im-text-3); cursor: pointer;
+      font: 24px/1 var(--im-font);
+    }
+    .im-dd-workbench-close:hover { background: var(--im-hover); color: var(--im-text); }
+    .im-dd-workbench-body {
+      flex: 1; overflow: auto; padding: 24px 30px 42px;
+      background: var(--im-bg);
+    }
+    .im-dd-workbench-loading { padding: 60px 0; text-align: center; color: var(--im-text-3); }
+    .im-dd-app-section { margin: 0 0 30px; }
+    .im-dd-app-section h2 { margin: 0 0 16px; font-size: 16px; font-weight: 600; color: var(--im-text); }
+    .im-dd-app-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(106px, 1fr));
+      gap: 22px 18px;
+      max-width: 960px;
+    }
+    .im-dd-app {
+      min-width: 0; padding: 8px 4px; border: 0; border-radius: 12px;
+      display: flex; flex-direction: column; align-items: center; gap: 9px;
+      background: transparent; color: var(--im-text); cursor: pointer;
+      font: inherit;
+    }
+    .im-dd-app:hover { background: var(--im-hover); }
+    .im-dd-app-icon {
+      width: 58px; height: 58px; border-radius: 14px;
+      display: grid; place-items: center;
+      color: var(--app-color); background: var(--app-bg);
+      box-shadow: inset 0 0 0 1px rgba(31,35,41,.035);
+    }
+    .im-dd-app-icon svg { width: 30px; height: 30px; }
+    .im-dd-app-name {
+      width: 100%; min-height: 34px;
+      display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+      overflow: hidden; text-align: center;
+      color: var(--im-text); font-size: 13px; line-height: 17px;
+    }
+    .__ROOT_CLASS__.__DARK_CLASS__ .im-dd-app-icon { filter: brightness(.88) saturate(.9); }
+
     /* 右边缘拖拽柄：左右拉伸 rail */
     .im-rail-resizer {
       position: fixed; top: var(--im-header-h); bottom: 0;
@@ -948,6 +1023,9 @@ export const CSS_DD = String.raw`
       .__ROOT_CLASS__.__LOCK_CLASS__:not(.im-topic-open) .im-chat-panel { display: none; }
       .__ROOT_CLASS__.__LOCK_CLASS__ .im-chat-panel { left: var(--im-nav); }
       .__ROOT_CLASS__.__LOCK_CLASS__ #reply-control { left: calc(var(--im-nav) + 12px) !important; right: 12px !important; }
+      .im-dd-workbench-head { padding: 14px 18px; }
+      .im-dd-workbench-body { padding: 20px 18px 34px; }
+      .im-dd-app-grid { grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 16px 10px; }
     }
 
     /* ---------- 深色模式 token + 硬编码覆盖 ---------- */

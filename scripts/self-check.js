@@ -63,6 +63,13 @@ if (output.includes("@match        https://linux.do/*") || output.includes("conn
   ok = false;
 }
 
+for (const marker of ["im-dd-workbench", "NodeLoc 应用与社区入口", "sidebar-section-content-discourse-apps-games"]) {
+  if (!output.includes(marker)) {
+    console.error(`missing DingTalk workbench marker: ${marker}`);
+    ok = false;
+  }
+}
+
 if (ok) {
   console.log("self-check passed");
   process.exit(0);

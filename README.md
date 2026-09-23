@@ -11,6 +11,7 @@
 - 主题详情、分页加载、楼层跳转、引用、回复与原生编辑器兜底
 - 全局搜索、用户卡/资料页、通知、私信与书签
 - 浅色、深色、跟随系统；三套皮肤即时切换
+- 钉钉皮肤原生风工作台：游戏、小程序、信息流、节点、标签和资源改为应用宫格
 - 完整加载 NodeLoc `site.json` 中的顶级分类与约 200 个节点
 - NodeLoc reactions、vote、reward、lottery、red-envelope 字段的只读兼容展示
 - 对抽奖购券、能量赠送、红包领取等站点私有写操作，提供“原生视图”入口
@@ -53,6 +54,7 @@ pnpm lint
 - `src/ui/list-panel.js`：节点列表加载与缓存键
 - `src/ui/chat-panel.js`：NodeLoc 分类链接、帖子插件扩展与原生降级
 - `src/features/nodeloc-plugins.js`：lottery/reward/reactions/vote/red-envelope 兼容卡
+- `src/features/dingtalk-workbench.js`：读取原生侧栏入口并渲染钉钉应用工作台
 - `src/config/*`：独立的 `nodeloc-im-*` 本地偏好键，避免与 Linux.do 版本冲突
 
 ## 许可与来源
