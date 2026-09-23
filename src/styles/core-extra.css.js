@@ -2875,6 +2875,9 @@ color: #7AA3D6;
       margin-top: 12px; padding: 7px 12px; border: 0; border-radius: 8px; background: #d946ef; color: #fff; cursor: pointer; font: inherit; font-size: 12px; font-weight: 650;
     }
     .__ROOT_CLASS__ .im-lottery-widget .lottery-buy-btn:hover { filter: brightness(1.08); }
+    .__ROOT_CLASS__.im-lottery-syncing .im-lottery-widget .lottery-buy-btn {
+      opacity: .62; pointer-events: none; cursor: wait;
+    }
     .__ROOT_CLASS__ .im-lottery-widget svg { width: 1em; height: 1em; fill: currentColor; }
     .__ROOT_CLASS__ .im-lottery-widget .im-lottery-native-actions {
       position: relative;

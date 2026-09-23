@@ -4,11 +4,11 @@ import { chatState, topicPostsMap } from "../state/chat-state.js";
 import { csrfToken } from "../bridge/api.js";
 import {
   discourseRequire, getComposerService, getEmberOwner, getTopicModel,
-  findLoadedPost, isComposerOpen, safeLookup,
+  findLoadedPost, isComposerOpen, refreshNativeTopicState, safeLookup,
 } from "../bridge/discourse.js";
 import { getCurrentUsername, normalizeUsername } from "../bridge/user.js";
 import { LOCK_CLASS, COMPOSE_PREVIEW_KEY } from "../config/constants.js";
-import { fetchLatestNewPosts, syncNewPostsFromDom } from "./chat-panel.js";
+import { fetchLatestNewPosts, rebindLotteryCards, syncNewPostsFromDom } from "./chat-panel.js";
 import { chatHooks } from "./hooks.js";
 import { mdToHtml, registerUploadUrl } from "./markdown-lite.js";
 
@@ -984,6 +984,21 @@ function completeComposerSubmission(input, _post) {
   setTimeout(() => syncNewPostsFromDom(), 400);
   setTimeout(() => fetchLatestNewPosts(topicId), 900);
   setTimeout(() => syncNewPostsFromDom(), 1400);
+  // 抽奖插件的“必须先回复”判断来自原生 Ember topic model。IM API 直发不会让该
+  // model 自动得知新楼层，因此仅在抽奖帖中定向刷新原生 route 并重新绑定操作区。
+  if (document.querySelector(".im-lottery-card, .lottery-widget")) {
+    document.documentElement.classList.add("im-lottery-syncing");
+    setTimeout(async () => {
+      try {
+        await refreshNativeTopicState();
+        // route 渲染与 promise 完成不一定同帧，连续两次绑定覆盖 Glimmer 延迟提交。
+        requestAnimationFrame(rebindLotteryCards);
+        setTimeout(rebindLotteryCards, 350);
+      } finally {
+        setTimeout(() => document.documentElement.classList.remove("im-lottery-syncing"), 420);
+      }
+    }, 350);
+  }
 }
 function showTargetedReply(postNumber) {
   const { input, target } = composeUi();

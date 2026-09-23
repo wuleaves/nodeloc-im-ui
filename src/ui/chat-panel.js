@@ -60,6 +60,16 @@ export function enhanceLotteryCards(root) {
   }
 }
 
+/** 原生 topic route 刷新后，重新克隆最新抽奖状态并移动新操作节点。 */
+export function rebindLotteryCards() {
+  const body = document.querySelector(".im-chat-body");
+  if (!body) return;
+  for (const card of body.querySelectorAll(".im-lottery-card")) {
+    delete card.dataset.imLotteryEnhanced;
+  }
+  enhanceLotteryCards(body);
+}
+
 /** NodeLoc AnyVideo 在原生 cooked 挂载后才会把空占位转换成播放器。
  * IM 视图直接使用 API cooked，因此在这里恢复为无需插件事件的原生 video。 */
 export function enhanceVideoPlaceholders(root) {

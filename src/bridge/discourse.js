@@ -84,3 +84,28 @@ export function isComposerOpen() {
   const el = document.querySelector("#reply-control");
   return !!(el && (el.classList.contains("open") || el.classList.contains("fullscreen") || el.classList.contains("edit-title")));
 }
+
+/**
+ * IM 通过 /posts.json 直发后，Discourse 隐藏的 topic route 不会自动刷新。
+ * NodeLoc 抽奖等 Ember 插件会继续读取旧 topic model（例如“当前用户是否已回复”），
+ * 因此需要刷新原生 route，但不重载整个页面。
+ */
+export async function refreshNativeTopicState() {
+  const owner = getEmberOwner();
+  if (!owner) return false;
+  try {
+    const topicRoute = safeLookup(owner, "route:topic");
+    if (typeof topicRoute?.refresh === "function") {
+      await Promise.resolve(topicRoute.refresh());
+      return true;
+    }
+    const router = safeLookup(owner, "service:router");
+    if (typeof router?.refresh === "function") {
+      await Promise.resolve(router.refresh());
+      return true;
+    }
+  } catch (error) {
+    console.warn("[nodeloc-im] refresh native topic state failed", error);
+  }
+  return false;
+}

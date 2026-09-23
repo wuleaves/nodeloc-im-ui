@@ -2,7 +2,7 @@
 // @name         NodeLoc · IM 外观（钉钉 / 飞书 / 企业微信）
 // @namespace    https://www.nodeloc.com/
 // @author       czm15053, NodeLoc adaptation
-// @version      0.6.4
+// @version      0.6.5
 // @description  NodeLoc 三栏 IM 外观：节点/主题列表、帖子流、回复、搜索、用户与通知，支持三套皮肤和明暗主题。
 // @match        https://www.nodeloc.com/*
 // @noframes
@@ -5998,6 +5998,9 @@ color: #7AA3D6;
       margin-top: 12px; padding: 7px 12px; border: 0; border-radius: 8px; background: #d946ef; color: #fff; cursor: pointer; font: inherit; font-size: 12px; font-weight: 650;
     }
     .__ROOT_CLASS__ .im-lottery-widget .lottery-buy-btn:hover { filter: brightness(1.08); }
+    .__ROOT_CLASS__.im-lottery-syncing .im-lottery-widget .lottery-buy-btn {
+      opacity: .62; pointer-events: none; cursor: wait;
+    }
     .__ROOT_CLASS__ .im-lottery-widget svg { width: 1em; height: 1em; fill: currentColor; }
     .__ROOT_CLASS__ .im-lottery-widget .im-lottery-native-actions {
       position: relative;
@@ -8199,6 +8202,25 @@ html.im-theme {
     const el = document.querySelector("#reply-control");
     return !!(el && (el.classList.contains("open") || el.classList.contains("fullscreen") || el.classList.contains("edit-title")));
   }
+  async function refreshNativeTopicState() {
+    const owner = getEmberOwner();
+    if (!owner) return false;
+    try {
+      const topicRoute = safeLookup(owner, "route:topic");
+      if (typeof (topicRoute == null ? void 0 : topicRoute.refresh) === "function") {
+        await Promise.resolve(topicRoute.refresh());
+        return true;
+      }
+      const router = safeLookup(owner, "service:router");
+      if (typeof (router == null ? void 0 : router.refresh) === "function") {
+        await Promise.resolve(router.refresh());
+        return true;
+      }
+    } catch (error) {
+      console.warn("[nodeloc-im] refresh native topic state failed", error);
+    }
+    return false;
+  }
   let applyHook = null;
   function onRouteApply(fn) {
     applyHook = fn;
@@ -9526,6 +9548,14 @@ html.im-theme {
       card.dataset.imLotteryEnhanced = "1";
       card.replaceChildren(clone);
     }
+  }
+  function rebindLotteryCards() {
+    const body = document.querySelector(".im-chat-body");
+    if (!body) return;
+    for (const card of body.querySelectorAll(".im-lottery-card")) {
+      delete card.dataset.imLotteryEnhanced;
+    }
+    enhanceLotteryCards(body);
   }
   function enhanceVideoPlaceholders(root2) {
     if (!root2) return;
@@ -11854,6 +11884,18 @@ ${data.raw}
     setTimeout(() => syncNewPostsFromDom(), 400);
     setTimeout(() => fetchLatestNewPosts(topicId), 900);
     setTimeout(() => syncNewPostsFromDom(), 1400);
+    if (document.querySelector(".im-lottery-card, .lottery-widget")) {
+      document.documentElement.classList.add("im-lottery-syncing");
+      setTimeout(async () => {
+        try {
+          await refreshNativeTopicState();
+          requestAnimationFrame(rebindLotteryCards);
+          setTimeout(rebindLotteryCards, 350);
+        } finally {
+          setTimeout(() => document.documentElement.classList.remove("im-lottery-syncing"), 420);
+        }
+      }, 350);
+    }
   }
   function showTargetedReply(postNumber) {
     var _a2, _b2;
@@ -17638,7 +17680,7 @@ ${item.label}`;
       }
     }
     function bootstrap() {
-      console.info(`[nodeloc-im] v${"0.6.4"} loaded, skin=${SKIN_ID}`);
+      console.info(`[nodeloc-im] v${"0.6.5"} loaded, skin=${SKIN_ID}`);
       if (!document.documentElement) {
         setTimeout(bootstrap, 0);
         return;
