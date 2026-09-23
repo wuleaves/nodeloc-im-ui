@@ -465,14 +465,106 @@ function openNotificationsColumn() {
   return true;
 }
 
-/** rail 左上角头像：点击回首页（通知列入口在筛选窄条铃铛；顶栏原生头像仍走通知列接管） */
+const DINGTALK_PROFILE_CLASS = "im-dingtalk-profile-menu";
+let profileMenuOpening = false;
+let profileMenuOutsideBound = false;
+
+function nativeUserToggle() {
+  return document.querySelector(
+    "#toggle-current-user, #current-user button, .header-dropdown-toggle.current-user button, .current-user button.icon, #current-user .icon, #current-user summary, .header-dropdown-toggle.current-user"
+  );
+}
+
+function closeDingtalkProfileMenu({ closeNative = true } = {}) {
+  const root = document.documentElement;
+  const menu = document.querySelector(`.user-menu.${DINGTALK_PROFILE_CLASS}`);
+  root.classList.remove("im-notif-open", "im-profile-open");
+  menu?.classList.remove("im-user-menu-float", DINGTALK_PROFILE_CLASS);
+  document.querySelectorAll(".im-rail-avatar.is-profile-open").forEach((el) => {
+    el.classList.remove("is-profile-open");
+    el.setAttribute("aria-expanded", "false");
+  });
+  if (!closeNative || !menu) return;
+  const toggle = nativeUserToggle();
+  if (toggle?.getAttribute("aria-expanded") === "true") {
+    profileMenuOpening = true;
+    toggle.click();
+    profileMenuOpening = false;
+  }
+}
+
+function decorateDingtalkProfileMenu(menu) {
+  const profileTab = menu.querySelector("#user-menu-button-profile, [data-tab-id='profile']");
+  if (profileTab && profileTab.getAttribute("aria-selected") !== "true") profileTab.click();
+  requestAnimationFrame(() => {
+    const activeMenu = document.querySelector(".user-menu") || menu;
+    activeMenu.classList.add("im-user-menu-float", DINGTALK_PROFILE_CLASS);
+    if (activeMenu.dataset.imProfileCleanupBound !== "1") {
+      activeMenu.dataset.imProfileCleanupBound = "1";
+      activeMenu.addEventListener("click", () => {
+        setTimeout(() => {
+          if (!activeMenu.isConnected || !document.querySelector(`.user-menu.${DINGTALK_PROFILE_CLASS}`)) {
+            closeDingtalkProfileMenu({ closeNative: false });
+          }
+        }, 200);
+      });
+    }
+    document.documentElement.classList.add("im-notif-open", "im-profile-open");
+    document.querySelectorAll(".im-rail-avatar").forEach((el) => {
+      el.classList.add("is-profile-open");
+      el.setAttribute("aria-expanded", "true");
+    });
+  });
+}
+
+function waitForDingtalkProfileMenu(attempt = 0) {
+  const menu = document.querySelector(".user-menu");
+  if (menu) return decorateDingtalkProfileMenu(menu);
+  if (attempt < 12) setTimeout(() => waitForDingtalkProfileMenu(attempt + 1), 40);
+}
+
+function toggleDingtalkProfileMenu() {
+  if (document.documentElement.classList.contains("im-profile-open")) {
+    closeDingtalkProfileMenu();
+    return;
+  }
+  closeDingtalkWorkbench();
+  const toggle = nativeUserToggle();
+  if (!toggle) return;
+  profileMenuOpening = true;
+  toggle.click();
+  profileMenuOpening = false;
+  waitForDingtalkProfileMenu();
+  if (!profileMenuOutsideBound) {
+    profileMenuOutsideBound = true;
+    document.addEventListener("click", (event) => {
+      if (!document.documentElement.classList.contains("im-profile-open")) return;
+      if (event.target.closest(`.${DINGTALK_PROFILE_CLASS}, .im-rail-avatar`)) return;
+      closeDingtalkProfileMenu();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeDingtalkProfileMenu();
+    });
+  }
+}
+
+/** rail / titlebar 左上角头像：钉钉皮肤显示原生个人菜单；其他皮肤保持原行为。 */
 export function bindRailAvatarNotif(rail) {
   const avatar = rail?.querySelector(".im-rail-avatar");
   if (!avatar || avatar.dataset.notifBound === "1") return;
   avatar.dataset.notifBound = "1";
-  avatar.removeAttribute("title");
+  avatar.title = SKIN_ID === "dingtalk" ? "个人资料" : "";
+  avatar.setAttribute("role", "button");
+  avatar.setAttribute("aria-haspopup", "menu");
+  avatar.setAttribute("aria-expanded", "false");
   avatar.addEventListener("click", (e) => {
     if (getViewMode() === "native" || otherThemeActive()) return;
+    if (SKIN_ID === "dingtalk") {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleDingtalkProfileMenu();
+      return;
+    }
     if (!interceptionAvailable()) return; // 降级：原生菜单行为保留
     e.preventDefault();
     e.stopPropagation();
@@ -496,6 +588,7 @@ export function bindHeaderUserMenuInterception() {
     (e) => {
       if (e.button !== 0) return;
       if (getViewMode() === "native" || otherThemeActive()) return;
+      if (SKIN_ID === "dingtalk" || profileMenuOpening) return;
       if (!interceptionAvailable()) return;
       const toggle = e.target.closest(
         "#toggle-current-user, #current-user button, .header-dropdown-toggle.current-user button, .current-user button.icon, #current-user .icon, #current-user summary, .header-dropdown-toggle.current-user"

@@ -2,7 +2,7 @@
 // @name         NodeLoc · IM 外观（钉钉 / 飞书 / 企业微信）
 // @namespace    https://www.nodeloc.com/
 // @author       czm15053, NodeLoc adaptation
-// @version      0.2.0
+// @version      0.3.0
 // @description  NodeLoc 三栏 IM 外观：节点/主题列表、帖子流、回复、搜索、用户与通知，支持三套皮肤和明暗主题。
 // @match        https://www.nodeloc.com/*
 // @noframes
@@ -395,7 +395,7 @@
       font-size: 9px; line-height: 14px; text-align: center;
       border-radius: 7px; font-weight: 500;
     }
-    /* 左侧栏头像通知：仅在 html.im-notif-open 时显示，避免关不掉 */
+    /* 左上头像：复用 NodeLoc 原生账户菜单，只改变为钉钉式浮层。 */
     .__ROOT_CLASS__ .user-menu.im-user-menu-float,
     .__ROOT_CLASS__ .user-menu.revamped.menu-panel.im-user-menu-float,
     .__ROOT_CLASS__ .user-menu.menu-panel.im-user-menu-float {
@@ -413,20 +413,78 @@
       top: calc(var(--im-header-h) + 4px) !important;
       right: auto !important;
       bottom: auto !important;
-      width: 320px !important;
-      max-width: min(320px, calc(100vw - 20px)) !important;
-      max-height: calc(100vh - 28px) !important;
+      width: 420px !important;
+      max-width: min(420px, calc(100vw - 20px)) !important;
+      max-height: calc(100vh - var(--im-header-h) - 16px) !important;
       margin: 0 !important;
       z-index: 450 !important;
       box-shadow: 0 8px 28px rgba(31, 35, 41, 0.18) !important;
-      border-radius: 8px !important;
-      overflow: auto !important;
+      border: 1px solid var(--im-border) !important;
+      border-radius: 12px !important;
+      overflow: hidden !important;
       pointer-events: auto !important;
       opacity: 1 !important;
       visibility: visible !important;
       background: #fff !important;
       color: var(--im-text) !important;
       clip: auto !important;
+    }
+    .__ROOT_CLASS__.im-profile-open .user-menu.im-dingtalk-profile-menu .panel-body,
+    .__ROOT_CLASS__.im-profile-open .user-menu.im-dingtalk-profile-menu .panel-body-contents {
+      width: 100% !important; max-width: none !important; height: auto !important;
+      min-height: 0 !important; display: flex !important; flex-direction: row-reverse !important;
+      background: transparent !important;
+    }
+    .__ROOT_CLASS__.im-profile-open .user-menu.im-dingtalk-profile-menu .menu-tabs-container {
+      width: 52px !important; min-width: 52px !important; padding: 8px 6px !important;
+      border-left: 1px solid var(--im-border) !important; border-bottom: 0 !important;
+      display: flex !important; flex-direction: column !important; justify-content: space-between !important;
+      background: var(--im-bg-soft) !important;
+    }
+    .__ROOT_CLASS__.im-profile-open .user-menu.im-dingtalk-profile-menu .tabs-list {
+      display: flex !important; flex-direction: column !important; gap: 3px !important;
+      margin: 0 !important; padding: 0 !important; width: 100% !important;
+    }
+    .__ROOT_CLASS__.im-profile-open .user-menu.im-dingtalk-profile-menu .tabs-list a {
+      width: 38px !important; height: 38px !important; min-width: 38px !important;
+      margin: 0 !important; padding: 0 !important; border: 0 !important; border-radius: 9px !important;
+      display: grid !important; place-items: center !important; color: var(--im-text-3) !important;
+    }
+    .__ROOT_CLASS__.im-profile-open .user-menu.im-dingtalk-profile-menu .tabs-list a:hover,
+    .__ROOT_CLASS__.im-profile-open .user-menu.im-dingtalk-profile-menu .tabs-list a.active,
+    .__ROOT_CLASS__.im-profile-open .user-menu.im-dingtalk-profile-menu .tabs-list a[aria-selected="true"] {
+      color: var(--im-accent) !important; background: var(--im-accent-soft) !important;
+    }
+    .__ROOT_CLASS__.im-profile-open .user-menu.im-dingtalk-profile-menu .quick-access-panel {
+      flex: 1 1 auto !important; width: auto !important; min-width: 0 !important;
+      max-height: calc(100vh - var(--im-header-h) - 18px) !important; overflow: auto !important;
+      padding: 8px !important; background: var(--im-bg) !important;
+    }
+    .__ROOT_CLASS__.im-profile-open .user-menu.im-dingtalk-profile-menu .quick-access-panel > ul {
+      margin: 0 !important; padding: 0 !important; list-style: none !important;
+    }
+    .__ROOT_CLASS__.im-profile-open .user-menu.im-dingtalk-profile-menu .quick-access-panel li {
+      margin: 0 !important; padding: 0 !important; border-radius: 8px !important;
+    }
+    .__ROOT_CLASS__.im-profile-open .user-menu.im-dingtalk-profile-menu .quick-access-panel li.separator,
+    .__ROOT_CLASS__.im-profile-open .user-menu.im-dingtalk-profile-menu .quick-access-panel li:not(:first-child).border-top {
+      margin-top: 7px !important; padding-top: 7px !important; border-top: 1px solid var(--im-border) !important;
+    }
+    .__ROOT_CLASS__.im-profile-open .user-menu.im-dingtalk-profile-menu .quick-access-panel a,
+    .__ROOT_CLASS__.im-profile-open .user-menu.im-dingtalk-profile-menu .quick-access-panel button {
+      width: 100% !important; min-height: 42px !important; margin: 0 !important; padding: 0 12px !important;
+      border: 0 !important; border-radius: 8px !important; background: transparent !important;
+      color: var(--im-text) !important; display: flex !important; align-items: center !important;
+      gap: 11px !important; font-size: 15px !important; font-weight: 400 !important;
+      text-align: left !important; box-shadow: none !important;
+    }
+    .__ROOT_CLASS__.im-profile-open .user-menu.im-dingtalk-profile-menu .quick-access-panel a:hover,
+    .__ROOT_CLASS__.im-profile-open .user-menu.im-dingtalk-profile-menu .quick-access-panel button:hover {
+      background: var(--im-hover) !important; color: var(--im-accent) !important;
+    }
+    .__ROOT_CLASS__.im-profile-open .user-menu.im-dingtalk-profile-menu svg,
+    .__ROOT_CLASS__.im-profile-open .user-menu.im-dingtalk-profile-menu .d-icon {
+      width: 18px !important; height: 18px !important; flex: 0 0 18px !important;
     }
 
     /* ---------- 最左：钉钉文字导航栏（浅色渐变；仅「更多」可点，展开原生侧栏） ---------- */
@@ -447,8 +505,10 @@
     /* 顶栏左侧：当前用户头像（沿用 rail-avatar 类名，复用通知菜单逻辑） */
     .im-titlebar .me-chip { position: relative; width: 26px; height: 26px; flex-shrink: 0; }
     .im-titlebar .im-rail-avatar {
-      width: 26px; height: 26px; border-radius: 6px; font-size: 11px;
+      width: 26px; height: 26px; border-radius: 6px; font-size: 11px; cursor: pointer;
     }
+    .im-titlebar .im-rail-avatar:hover,
+    .im-titlebar .im-rail-avatar.is-profile-open { box-shadow: 0 0 0 3px rgba(20,118,255,.16); }
     .im-titlebar .im-rail-avatar-badge {
       top: -5px; right: -7px; min-width: 14px; height: 14px; padding: 0 3px;
       font-size: 9px; line-height: 14px; border-radius: 7px;
@@ -12862,13 +12922,99 @@ ${item.label}`;
     }
     return true;
   }
+  const DINGTALK_PROFILE_CLASS = "im-dingtalk-profile-menu";
+  let profileMenuOpening = false;
+  let profileMenuOutsideBound = false;
+  function nativeUserToggle() {
+    return document.querySelector(
+      "#toggle-current-user, #current-user button, .header-dropdown-toggle.current-user button, .current-user button.icon, #current-user .icon, #current-user summary, .header-dropdown-toggle.current-user"
+    );
+  }
+  function closeDingtalkProfileMenu({ closeNative = true } = {}) {
+    const root2 = document.documentElement;
+    const menu = document.querySelector(`.user-menu.${DINGTALK_PROFILE_CLASS}`);
+    root2.classList.remove("im-notif-open", "im-profile-open");
+    menu == null ? void 0 : menu.classList.remove("im-user-menu-float", DINGTALK_PROFILE_CLASS);
+    document.querySelectorAll(".im-rail-avatar.is-profile-open").forEach((el) => {
+      el.classList.remove("is-profile-open");
+      el.setAttribute("aria-expanded", "false");
+    });
+    if (!closeNative || !menu) return;
+    const toggle = nativeUserToggle();
+    if ((toggle == null ? void 0 : toggle.getAttribute("aria-expanded")) === "true") {
+      profileMenuOpening = true;
+      toggle.click();
+      profileMenuOpening = false;
+    }
+  }
+  function decorateDingtalkProfileMenu(menu) {
+    const profileTab = menu.querySelector("#user-menu-button-profile, [data-tab-id='profile']");
+    if (profileTab && profileTab.getAttribute("aria-selected") !== "true") profileTab.click();
+    requestAnimationFrame(() => {
+      const activeMenu = document.querySelector(".user-menu") || menu;
+      activeMenu.classList.add("im-user-menu-float", DINGTALK_PROFILE_CLASS);
+      if (activeMenu.dataset.imProfileCleanupBound !== "1") {
+        activeMenu.dataset.imProfileCleanupBound = "1";
+        activeMenu.addEventListener("click", () => {
+          setTimeout(() => {
+            if (!activeMenu.isConnected || !document.querySelector(`.user-menu.${DINGTALK_PROFILE_CLASS}`)) {
+              closeDingtalkProfileMenu({ closeNative: false });
+            }
+          }, 200);
+        });
+      }
+      document.documentElement.classList.add("im-notif-open", "im-profile-open");
+      document.querySelectorAll(".im-rail-avatar").forEach((el) => {
+        el.classList.add("is-profile-open");
+        el.setAttribute("aria-expanded", "true");
+      });
+    });
+  }
+  function waitForDingtalkProfileMenu(attempt = 0) {
+    const menu = document.querySelector(".user-menu");
+    if (menu) return decorateDingtalkProfileMenu(menu);
+    if (attempt < 12) setTimeout(() => waitForDingtalkProfileMenu(attempt + 1), 40);
+  }
+  function toggleDingtalkProfileMenu() {
+    if (document.documentElement.classList.contains("im-profile-open")) {
+      closeDingtalkProfileMenu();
+      return;
+    }
+    closeDingtalkWorkbench();
+    const toggle = nativeUserToggle();
+    if (!toggle) return;
+    profileMenuOpening = true;
+    toggle.click();
+    profileMenuOpening = false;
+    waitForDingtalkProfileMenu();
+    if (!profileMenuOutsideBound) {
+      profileMenuOutsideBound = true;
+      document.addEventListener("click", (event) => {
+        if (!document.documentElement.classList.contains("im-profile-open")) return;
+        if (event.target.closest(`.${DINGTALK_PROFILE_CLASS}, .im-rail-avatar`)) return;
+        closeDingtalkProfileMenu();
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") closeDingtalkProfileMenu();
+      });
+    }
+  }
   function bindRailAvatarNotif(rail) {
     const avatar = rail == null ? void 0 : rail.querySelector(".im-rail-avatar");
     if (!avatar || avatar.dataset.notifBound === "1") return;
     avatar.dataset.notifBound = "1";
-    avatar.removeAttribute("title");
+    avatar.title = SKIN_ID === "dingtalk" ? "个人资料" : "";
+    avatar.setAttribute("role", "button");
+    avatar.setAttribute("aria-haspopup", "menu");
+    avatar.setAttribute("aria-expanded", "false");
     avatar.addEventListener("click", (e) => {
       if (getViewMode() === "native" || otherThemeActive()) return;
+      if (SKIN_ID === "dingtalk") {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleDingtalkProfileMenu();
+        return;
+      }
       if (!interceptionAvailable()) return;
       e.preventDefault();
       e.stopPropagation();
@@ -12889,6 +13035,7 @@ ${item.label}`;
       (e) => {
         if (e.button !== 0) return;
         if (getViewMode() === "native" || otherThemeActive()) return;
+        if (SKIN_ID === "dingtalk" || profileMenuOpening) return;
         if (!interceptionAvailable()) return;
         const toggle = e.target.closest(
           "#toggle-current-user, #current-user button, .header-dropdown-toggle.current-user button, .current-user button.icon, #current-user .icon, #current-user summary, .header-dropdown-toggle.current-user"
@@ -16857,7 +17004,7 @@ ${item.label}`;
       }
     }
     function bootstrap() {
-      console.info(`[nodeloc-im] v${"0.2.0"} loaded, skin=${SKIN_ID}`);
+      console.info(`[nodeloc-im] v${"0.3.0"} loaded, skin=${SKIN_ID}`);
       if (!document.documentElement) {
         setTimeout(bootstrap, 0);
         return;

@@ -70,6 +70,13 @@ for (const marker of ["im-dd-workbench", "NodeLoc 应用与社区入口", "sideb
   }
 }
 
+for (const marker of ["im-dingtalk-profile-menu", "function toggleDingtalkProfileMenu(", "#user-menu-button-profile"]) {
+  if (!output.includes(marker)) {
+    console.error(`missing native profile-menu marker: ${marker}`);
+    ok = false;
+  }
+}
+
 if (ok) {
   console.log("self-check passed");
   process.exit(0);
