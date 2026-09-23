@@ -2,7 +2,7 @@
 // @name         NodeLoc · IM 外观（钉钉 / 飞书 / 企业微信）
 // @namespace    https://www.nodeloc.com/
 // @author       czm15053, NodeLoc adaptation
-// @version      0.5.7
+// @version      0.5.8
 // @description  NodeLoc 三栏 IM 外观：节点/主题列表、帖子流、回复、搜索、用户与通知，支持三套皮肤和明暗主题。
 // @match        https://www.nodeloc.com/*
 // @noframes
@@ -11110,12 +11110,14 @@ html.im-theme {
     const status = document.querySelector(".im-composer-status");
     if (!status) return;
     status.textContent = message || "";
+    status.title = message || "";
     status.classList.remove("busy", "error", "success");
     if (kind) status.classList.add(kind);
     if (message) {
       clearTimeout(setComposeStatus._timer);
       setComposeStatus._timer = setTimeout(() => {
         status.textContent = "";
+        status.title = "";
         status.classList.remove("busy", "error", "success");
       }, 3200);
     }
@@ -11466,23 +11468,31 @@ ${data.raw}
   }
   async function submitReplyViaApi(raw, replyToPostNumber) {
     var _a2;
-    const body = { raw, topic_id: Number(chatState.topicId) };
-    if (replyToPostNumber) body.reply_to_post_number = Number(replyToPostNumber);
+    const body = new URLSearchParams();
+    body.set("raw", raw);
+    body.set("topic_id", String(Number(chatState.topicId)));
+    if (replyToPostNumber) body.set("reply_to_post_number", String(Number(replyToPostNumber)));
     const response = await fetch("/posts.json", {
       method: "POST",
       credentials: "same-origin",
       headers: {
         "X-CSRF-Token": csrfToken(),
         "X-Requested-With": "XMLHttpRequest",
-        "Content-Type": "application/json; charset=UTF-8"
+        "Accept": "application/json",
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"
       },
-      body: JSON.stringify(body)
+      body: body.toString()
     });
     const payload = await response.json().catch(() => ({}));
-    const serverErrors = ((_a2 = payload.errors) == null ? void 0 : _a2.length) ? payload.errors : payload.error ? [payload.error] : null;
+    const rawErrors = ((_a2 = payload.errors) == null ? void 0 : _a2.length) ? payload.errors : payload.error || payload.message ? [payload.error || payload.message] : null;
+    const serverErrors = rawErrors ? (Array.isArray(rawErrors) ? rawErrors : [rawErrors]).map(
+      (item) => typeof item === "string" ? item : (item == null ? void 0 : item.message) || (item == null ? void 0 : item.error) || JSON.stringify(item)
+    ).filter(Boolean) : null;
     if (serverErrors) {
       const err = new Error(serverErrors.join("；"));
-      err.validation = true;
+      err.validation = serverErrors.some(
+        (message) => /过短|太短|至少.{0,8}(?:字|字符)|不能为空|字数|字符数|超过.{0,8}(?:字|字符)|too short|too long|required/i.test(message)
+      );
       throw err;
     }
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -17616,7 +17626,7 @@ ${item.label}`;
       }
     }
     function bootstrap() {
-      console.info(`[nodeloc-im] v${"0.5.7"} loaded, skin=${SKIN_ID}`);
+      console.info(`[nodeloc-im] v${"0.5.8"} loaded, skin=${SKIN_ID}`);
       if (!document.documentElement) {
         setTimeout(bootstrap, 0);
         return;
