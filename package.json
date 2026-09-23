@@ -1,6 +1,6 @@
 {
   "name": "nodeloc-im-ui",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "NodeLoc IM 外观 userscript（钉钉 / 飞书 / 企业微信）",
   "type": "module",
   "private": true,

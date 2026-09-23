@@ -42,6 +42,29 @@ width: 10px; height: 10px; border-radius: 3px;
 .im-posting-gate-secondary { border: 1px solid transparent; background: transparent; color: var(--im-text-2); }
 .im-posting-gate-secondary:hover { background: var(--im-hover); color: var(--im-text); }
 
+/* 关闭新话题时的原生“放弃草稿”等确认框必须高于 IM 三栏。 */
+.__ROOT_CLASS__ .im-native-modal-host {
+  z-index: 2147483100 !important;
+  pointer-events: auto !important;
+}
+.__ROOT_CLASS__.__LOCK_CLASS__ #main-outlet > .im-native-modal-host {
+  visibility: visible !important;
+  width: auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  position: relative !important;
+}
+.__ROOT_CLASS__ .im-native-modal-host .d-modal,
+.__ROOT_CLASS__ .im-native-modal-host .modal,
+.__ROOT_CLASS__ .im-native-modal-host .modal-backdrop {
+  z-index: 2147483101 !important;
+  pointer-events: auto !important;
+}
+
 /* NodeLoc AnyVideo 占位在 IM cooked 中恢复为可播放的原生媒体控件 */
 .im-native-video {
   width: min(100%, 760px);

@@ -2,7 +2,7 @@
 // @name         NodeLoc · IM 外观（钉钉 / 飞书 / 企业微信）
 // @namespace    https://www.nodeloc.com/
 // @author       czm15053, NodeLoc adaptation
-// @version      0.6.1
+// @version      0.6.2
 // @description  NodeLoc 三栏 IM 外观：节点/主题列表、帖子流、回复、搜索、用户与通知，支持三套皮肤和明暗主题。
 // @match        https://www.nodeloc.com/*
 // @noframes
@@ -3164,6 +3164,29 @@ width: 10px; height: 10px; border-radius: 3px;
 .im-posting-gate-primary:hover { filter: brightness(.96); }
 .im-posting-gate-secondary { border: 1px solid transparent; background: transparent; color: var(--im-text-2); }
 .im-posting-gate-secondary:hover { background: var(--im-hover); color: var(--im-text); }
+
+/* 关闭新话题时的原生“放弃草稿”等确认框必须高于 IM 三栏。 */
+.__ROOT_CLASS__ .im-native-modal-host {
+  z-index: 2147483100 !important;
+  pointer-events: auto !important;
+}
+.__ROOT_CLASS__.__LOCK_CLASS__ #main-outlet > .im-native-modal-host {
+  visibility: visible !important;
+  width: auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  position: relative !important;
+}
+.__ROOT_CLASS__ .im-native-modal-host .d-modal,
+.__ROOT_CLASS__ .im-native-modal-host .modal,
+.__ROOT_CLASS__ .im-native-modal-host .modal-backdrop {
+  z-index: 2147483101 !important;
+  pointer-events: auto !important;
+}
 
 /* NodeLoc AnyVideo 占位在 IM cooked 中恢复为可播放的原生媒体控件 */
 .im-native-video {
@@ -15410,7 +15433,20 @@ ${item.label}`;
     }
     syncEmbedGeometry(active);
   }
-  const EMBED_PROPS = ["left", "right", "top", "bottom", "width", "transform", "translate", "transition"];
+  const EMBED_PROPS = [
+    "left",
+    "right",
+    "top",
+    "bottom",
+    "width",
+    "min-width",
+    "height",
+    "min-height",
+    "max-height",
+    "transform",
+    "translate",
+    "transition"
+  ];
   function syncEmbedGeometry(active) {
     const rc = document.querySelector("#reply-control");
     if (!rc) return;
@@ -15486,10 +15522,31 @@ ${item.label}`;
   function reSyncEmbedGeometry() {
     if (document.documentElement.classList.contains(ROOT_CLASS)) syncEmbedGeometry(true);
   }
+  function syncNativeModalHosts() {
+    for (const old of document.querySelectorAll(".im-native-modal-host")) old.classList.remove("im-native-modal-host");
+    const outlet = document.querySelector("#main-outlet");
+    if (!outlet) return;
+    for (const modal of document.querySelectorAll(".d-modal[role='dialog'], .modal[role='dialog']")) {
+      if (modal.closest(".im-posting-gate, .im-shell")) continue;
+      const root2 = outlet.contains(modal) ? outlet : document.body;
+      let host = modal;
+      while (host.parentElement && host.parentElement !== root2) host = host.parentElement;
+      if (host.parentElement === root2) host.classList.add("im-native-modal-host");
+    }
+  }
   window.addEventListener("resize", reSyncEmbedGeometry);
   window.addEventListener("im-layout-change", reSyncEmbedGeometry);
   function initComposerEmbed() {
-    watchReplyControl(applyEmbedState);
+    watchReplyControl((open) => {
+      applyEmbedState(open);
+      syncNativeModalHosts();
+      if (!open) {
+        requestAnimationFrame(syncNativeModalHosts);
+        setTimeout(syncNativeModalHosts, 80);
+        setTimeout(syncNativeModalHosts, 260);
+      }
+    });
+    new MutationObserver(syncNativeModalHosts).observe(document.body, { childList: true, subtree: true });
     document.addEventListener(
       "keydown",
       (e) => {
@@ -17497,7 +17554,7 @@ ${item.label}`;
       }
     }
     function bootstrap() {
-      console.info(`[nodeloc-im] v${"0.6.1"} loaded, skin=${SKIN_ID}`);
+      console.info(`[nodeloc-im] v${"0.6.2"} loaded, skin=${SKIN_ID}`);
       if (!document.documentElement) {
         setTimeout(bootstrap, 0);
         return;

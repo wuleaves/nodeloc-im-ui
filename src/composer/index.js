@@ -21,7 +21,10 @@ function applyEmbedState(open) {
 // 实测仍有偏移（left:607 视觉在 873）：部分主题给祖先加 transform/filter 等属性，会把
 // fixed 的包含块从视口劫持成那个祖先盒子——所以左/下/宽全部「打零读偏移、闭环校准」，
 // 不假设包含块是视口；宽用显式 px 而非 left+right 对解（cb 比视口窄时对解会把卡片压窄）。
-const EMBED_PROPS = ["left", "right", "top", "bottom", "width", "transform", "translate", "transition"];
+const EMBED_PROPS = [
+  "left", "right", "top", "bottom", "width", "min-width", "height", "min-height", "max-height",
+  "transform", "translate", "transition"
+];
 function syncEmbedGeometry(active) {
   const rc = document.querySelector("#reply-control");
   if (!rc) return;
@@ -112,11 +115,39 @@ function syncEmbedGeometry(active) {
 function reSyncEmbedGeometry() {
   if (document.documentElement.classList.contains(ROOT_CLASS)) syncEmbedGeometry(true);
 }
+
+/*
+ * Discourse 在关闭已填写的新话题时会把“放弃草稿”确认框挂到
+ * #main-outlet 下。IM 锁定态会隐藏该区域的原生内容；如果不单独放行弹窗宿主，
+ * 透明 backdrop 仍然会拦截点击，视觉上就是“网页卡死”。
+ */
+function syncNativeModalHosts() {
+  for (const old of document.querySelectorAll(".im-native-modal-host")) old.classList.remove("im-native-modal-host");
+  const outlet = document.querySelector("#main-outlet");
+  if (!outlet) return;
+  for (const modal of document.querySelectorAll(".d-modal[role='dialog'], .modal[role='dialog']")) {
+    if (modal.closest(".im-posting-gate, .im-shell")) continue;
+    const root = outlet.contains(modal) ? outlet : document.body;
+    let host = modal;
+    while (host.parentElement && host.parentElement !== root) host = host.parentElement;
+    if (host.parentElement === root) host.classList.add("im-native-modal-host");
+  }
+}
 window.addEventListener("resize", reSyncEmbedGeometry);
 window.addEventListener("im-layout-change", reSyncEmbedGeometry); // 侧栏/列表拖宽时跟随
 
 export function initComposerEmbed() {
-  watchReplyControl(applyEmbedState);
+  watchReplyControl((open) => {
+    applyEmbedState(open);
+    syncNativeModalHosts();
+    // 关闭动画和确认弹窗可能晚一到数帧挂载。
+    if (!open) {
+      requestAnimationFrame(syncNativeModalHosts);
+      setTimeout(syncNativeModalHosts, 80);
+      setTimeout(syncNativeModalHosts, 260);
+    }
+  });
+  new MutationObserver(syncNativeModalHosts).observe(document.body, { childList: true, subtree: true });
   // IM 习惯：嵌入态编辑器内 Enter 直发、⇧Enter 换行（捕获阶段先于 ProseMirror 处理）
   document.addEventListener(
     "keydown",
