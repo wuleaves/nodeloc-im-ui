@@ -2,7 +2,7 @@
 // @name         NodeLoc · IM 外观（钉钉 / 飞书 / 企业微信）
 // @namespace    https://www.nodeloc.com/
 // @author       czm15053, NodeLoc adaptation
-// @version      0.6.5
+// @version      0.6.6
 // @description  NodeLoc 三栏 IM 外观：节点/主题列表、帖子流、回复、搜索、用户与通知，支持三套皮肤和明暗主题。
 // @match        https://www.nodeloc.com/*
 // @noframes
@@ -9524,9 +9524,31 @@ html.im-theme {
     enhanceLotteryCards(body);
     (_b2 = chatHooks.syncAiSummary) == null ? void 0 : _b2.call(chatHooks);
   }
-  const lotteryActionsByWidget = /* @__PURE__ */ new WeakMap();
+  const lotteryBindings = /* @__PURE__ */ new WeakMap();
+  function cloneLotteryWidget(widget) {
+    const clone = widget.cloneNode(true);
+    clone.classList.add("im-lottery-widget");
+    clone.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
+    return clone;
+  }
+  function syncLotteryClone(card, widget) {
+    if (!card.isConnected || !widget.isConnected) return;
+    const clone = cloneLotteryWidget(widget);
+    clone.addEventListener("click", (event) => {
+      const control = event.target.closest("button, [role='button'], a");
+      if (!control || !clone.contains(control)) return;
+      const controls = [...clone.querySelectorAll("button, [role='button'], a")];
+      const index = controls.indexOf(control);
+      const nativeControl = [...widget.querySelectorAll("button, [role='button'], a")][index];
+      if (!nativeControl) return;
+      event.preventDefault();
+      event.stopPropagation();
+      nativeControl.click();
+    });
+    card.replaceChildren(clone);
+  }
   function enhanceLotteryCards(root2) {
-    var _a2;
+    var _a2, _b2;
     if (!root2) return;
     for (const card of root2.querySelectorAll(".im-lottery-card:not([data-im-lottery-enhanced])")) {
       const postNumber = Number(((_a2 = card.closest(".im-msg")) == null ? void 0 : _a2.dataset.postNumber) || 0);
@@ -9535,24 +9557,21 @@ html.im-theme {
       );
       const widget = nativePost == null ? void 0 : nativePost.querySelector(".lottery-widget");
       if (!widget) continue;
-      const nativeActions = widget.querySelector(".lottery-inline-dialog-wrapper") || lotteryActionsByWidget.get(widget);
-      const clone = widget.cloneNode(true);
-      clone.classList.add("im-lottery-widget");
-      clone.querySelectorAll(".lottery-inline-dialog-wrapper").forEach((el) => el.remove());
-      clone.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
-      if (nativeActions) {
-        lotteryActionsByWidget.set(widget, nativeActions);
-        nativeActions.classList.add("im-lottery-native-actions");
-        clone.appendChild(nativeActions);
-      }
+      (_b2 = lotteryBindings.get(card)) == null ? void 0 : _b2.disconnect();
+      syncLotteryClone(card, widget);
+      const observer = new MutationObserver(() => syncLotteryClone(card, widget));
+      observer.observe(widget, { childList: true, subtree: true, attributes: true, characterData: true });
+      lotteryBindings.set(card, observer);
       card.dataset.imLotteryEnhanced = "1";
-      card.replaceChildren(clone);
     }
   }
   function rebindLotteryCards() {
+    var _a2;
     const body = document.querySelector(".im-chat-body");
     if (!body) return;
     for (const card of body.querySelectorAll(".im-lottery-card")) {
+      (_a2 = lotteryBindings.get(card)) == null ? void 0 : _a2.disconnect();
+      lotteryBindings.delete(card);
       delete card.dataset.imLotteryEnhanced;
     }
     enhanceLotteryCards(body);
@@ -17680,7 +17699,7 @@ ${item.label}`;
       }
     }
     function bootstrap() {
-      console.info(`[nodeloc-im] v${"0.6.5"} loaded, skin=${SKIN_ID}`);
+      console.info(`[nodeloc-im] v${"0.6.6"} loaded, skin=${SKIN_ID}`);
       if (!document.documentElement) {
         setTimeout(bootstrap, 0);
         return;
