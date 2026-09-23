@@ -2,7 +2,7 @@
 // @name         NodeLoc · IM 外观（钉钉 / 飞书 / 企业微信）
 // @namespace    https://www.nodeloc.com/
 // @author       czm15053, NodeLoc adaptation
-// @version      0.4.1
+// @version      0.4.2
 // @description  NodeLoc 三栏 IM 外观：节点/主题列表、帖子流、回复、搜索、用户与通知，支持三套皮肤和明暗主题。
 // @match        https://www.nodeloc.com/*
 // @noframes
@@ -767,10 +767,36 @@
     .__ROOT_CLASS__.im-chat-hub-open .im-dingtalk-chat-hub .c-footer__item[aria-current="page"] {
       color: var(--im-blue) !important;
     }
+    .__ROOT_CLASS__.im-chat-hub-open .im-dingtalk-chat-hub .c-navbar__full-page-button svg { width: 18px !important; height: 18px !important; }
+    .__ROOT_CLASS__.im-chat-hub-windowed .chat-drawer-outlet,
+    .__ROOT_CLASS__.im-chat-hub-windowed .chat-drawer-outlet-container {
+      left: 0 !important; top: 0 !important; width: 100vw !important; height: 100vh !important;
+      pointer-events: none !important;
+    }
+    .__ROOT_CLASS__.im-chat-hub-windowed .chat-drawer.im-dingtalk-chat-hub {
+      position: fixed !important; inset: auto !important;
+      left: var(--im-chat-window-x, calc(100vw - 744px)) !important;
+      top: var(--im-chat-window-y, 64px) !important;
+      width: min(720px, calc(100vw - 32px)) !important;
+      height: min(680px, calc(100vh - 88px)) !important;
+      border: 1px solid var(--im-border) !important; border-radius: 12px !important;
+      box-shadow: 0 18px 55px rgba(31,35,41,.24) !important; pointer-events: auto !important;
+    }
+    .__ROOT_CLASS__.im-chat-hub-windowed .im-dingtalk-chat-hub .chat-drawer-container,
+    .__ROOT_CLASS__.im-chat-hub-windowed .im-dingtalk-chat-hub .chat-drawer-content { border-radius: inherit !important; }
+    .__ROOT_CLASS__.im-chat-hub-windowed .im-dingtalk-chat-hub .c-navbar { cursor: grab !important; user-select: none !important; }
+    .__ROOT_CLASS__.im-chat-hub-windowed .im-dingtalk-chat-hub.is-dragging {
+      transition: none !important; box-shadow: 0 22px 65px rgba(31,35,41,.32) !important;
+    }
+    .__ROOT_CLASS__.im-chat-hub-windowed .im-dingtalk-chat-hub.is-dragging .c-navbar { cursor: grabbing !important; }
     .__ROOT_CLASS__.im-chat-hub-open .im-list-panel,
     .__ROOT_CLASS__.im-chat-hub-open .im-chat-panel,
     .__ROOT_CLASS__.im-chat-hub-open .im-strip,
     .__ROOT_CLASS__.im-chat-hub-open .im-nav2 { visibility: hidden !important; pointer-events: none !important; }
+    .__ROOT_CLASS__.im-chat-hub-open.im-chat-hub-windowed .im-list-panel,
+    .__ROOT_CLASS__.im-chat-hub-open.im-chat-hub-windowed .im-chat-panel,
+    .__ROOT_CLASS__.im-chat-hub-open.im-chat-hub-windowed .im-strip,
+    .__ROOT_CLASS__.im-chat-hub-open.im-chat-hub-windowed .im-nav2 { visibility: visible !important; pointer-events: auto !important; }
 
     /* 右边缘拖拽柄：左右拉伸 rail */
     .im-rail-resizer {
@@ -11792,11 +11818,11 @@ ${data.raw}
     rz.className = "im-rail-resizer";
     rz.title = "拖动调整侧栏宽度（双击复位）";
     document.body.appendChild(rz);
-    let dragging = false;
+    let dragging2 = false;
     let startX = 0;
     let startW = 0;
     rz.addEventListener("pointerdown", (e) => {
-      dragging = true;
+      dragging2 = true;
       startX = e.clientX;
       startW = parseInt(document.documentElement.style.getPropertyValue("--im-nav"), 10) || getRailWidth();
       rz.classList.add("dragging");
@@ -11807,14 +11833,14 @@ ${data.raw}
       e.preventDefault();
     });
     rz.addEventListener("pointermove", (e) => {
-      if (!dragging) return;
+      if (!dragging2) return;
       const target = startW + e.clientX - startX;
       if (SKIN_ID === "wecom" || SKIN_ID === "feishu") setRailCollapsed(target < RAIL_W_MIN + 12);
       applyRailWidth(target);
     });
-    const endDrag = () => {
-      if (!dragging) return;
-      dragging = false;
+    const endDrag2 = () => {
+      if (!dragging2) return;
+      dragging2 = false;
       rz.classList.remove("dragging");
       const w = parseInt(document.documentElement.style.getPropertyValue("--im-nav"), 10);
       if (w) {
@@ -11824,8 +11850,8 @@ ${data.raw}
         }
       }
     };
-    rz.addEventListener("pointerup", endDrag);
-    rz.addEventListener("pointercancel", endDrag);
+    rz.addEventListener("pointerup", endDrag2);
+    rz.addEventListener("pointercancel", endDrag2);
     rz.addEventListener("dblclick", () => {
       applyRailWidth(RAIL_WIDTH);
       try {
@@ -11855,11 +11881,11 @@ ${data.raw}
     rz.className = "im-list-resizer";
     rz.title = "拖动调整会话列表宽度（双击复位）";
     document.body.appendChild(rz);
-    let dragging = false;
+    let dragging2 = false;
     let startX = 0;
     let startW = 0;
     rz.addEventListener("pointerdown", (e) => {
-      dragging = true;
+      dragging2 = true;
       startX = e.clientX;
       startW = parseInt(document.documentElement.style.getPropertyValue("--im-list"), 10) || getListWidth();
       rz.classList.add("dragging");
@@ -11870,12 +11896,12 @@ ${data.raw}
       e.preventDefault();
     });
     rz.addEventListener("pointermove", (e) => {
-      if (!dragging) return;
+      if (!dragging2) return;
       applyListWidth(startW + e.clientX - startX);
     });
-    const endDrag = () => {
-      if (!dragging) return;
-      dragging = false;
+    const endDrag2 = () => {
+      if (!dragging2) return;
+      dragging2 = false;
       rz.classList.remove("dragging");
       const w = parseInt(document.documentElement.style.getPropertyValue("--im-list"), 10);
       if (w) {
@@ -11885,8 +11911,8 @@ ${data.raw}
         }
       }
     };
-    rz.addEventListener("pointerup", endDrag);
-    rz.addEventListener("pointercancel", endDrag);
+    rz.addEventListener("pointerup", endDrag2);
+    rz.addEventListener("pointercancel", endDrag2);
     rz.addEventListener("dblclick", () => {
       applyListWidth(LIST_WIDTH);
       try {
@@ -12456,6 +12482,7 @@ ${data.raw}
     return activeKey;
   }
   function resetRailToChat() {
+    if (document.documentElement.classList.contains("im-chat-hub-open")) return;
     if (activeKey === "chat") return;
     setActiveRailKey("chat");
   }
@@ -12543,6 +12570,10 @@ ${data.raw}
       onScroll: notificationsScroll
     });
     registerExtraSources();
+    if (!document.documentElement.dataset.imChatHubCloseBound) {
+      document.documentElement.dataset.imChatHubCloseBound = "1";
+      document.addEventListener("im-chat-hub-close", () => setActiveRailKey("chat", { force: true }));
+    }
   }
   const SECTION_SPECS = [
     { title: "游戏", controls: ["sidebar-section-content-discourse-apps-games"], icon: "rocket", fallback: [["游戏中心", "/apps"]] },
@@ -12713,20 +12744,72 @@ ${item.label}`;
     if (document.body.contains(panel)) renderSections(panel);
   }
   const HUB_CLASS = "im-chat-hub-open";
-  let outsideBound = false;
+  let controlsBound = false;
   let drawerObserver = null;
+  let dragging = null;
+  const WINDOW_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 9h8M8 13h5"/></svg>`;
+  const FULL_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M21 16v5h-5M8 21H3v-5"/></svg>`;
   function nativeDrawer() {
     return document.querySelector(".chat-drawer");
   }
   function nativeChatToggle() {
-    return document.querySelector(
-      'a[title="聊天"], .header-dropdown-toggle.chat button, .chat-header-icon button, a.btn[href="/chat"]'
-    );
+    return document.querySelector('a[title="聊天"], .header-dropdown-toggle.chat button, .chat-header-icon button, a.btn[href="/chat"]');
+  }
+  function syncWindowButton(drawer) {
+    const button = drawer.querySelector(".c-navbar__full-page-button");
+    if (!button) return;
+    const windowed = document.documentElement.classList.contains("im-chat-hub-windowed");
+    button.dataset.imChatWindowToggle = "1";
+    button.title = windowed ? "恢复全屏聊天" : "小窗聊天";
+    button.setAttribute("aria-label", button.title);
+    const mode = windowed ? "full" : "window";
+    if (button.dataset.imChatIcon !== mode) {
+      button.dataset.imChatIcon = mode;
+      button.innerHTML = windowed ? FULL_ICON : WINDOW_ICON;
+    }
+  }
+  function setWindowPosition(drawer, x, y) {
+    const rect = drawer.getBoundingClientRect();
+    const maxX = Math.max(8, window.innerWidth - rect.width - 8);
+    const maxY = Math.max(48, window.innerHeight - rect.height - 8);
+    drawer.style.setProperty("--im-chat-window-x", `${Math.max(8, Math.min(x, maxX))}px`);
+    drawer.style.setProperty("--im-chat-window-y", `${Math.max(48, Math.min(y, maxY))}px`);
+  }
+  function toggleChatWindow(drawer) {
+    const root2 = document.documentElement;
+    const windowed = !root2.classList.contains("im-chat-hub-windowed");
+    root2.classList.toggle("im-chat-hub-windowed", windowed);
+    if (windowed) {
+      requestAnimationFrame(() => {
+        const rect = drawer.getBoundingClientRect();
+        setWindowPosition(drawer, window.innerWidth - rect.width - 24, 64);
+      });
+    } else {
+      drawer.style.removeProperty("--im-chat-window-x");
+      drawer.style.removeProperty("--im-chat-window-y");
+    }
+    syncWindowButton(drawer);
+  }
+  function beginDrag(event, drawer) {
+    if (!document.documentElement.classList.contains("im-chat-hub-windowed")) return;
+    if (event.button !== 0 || event.target.closest("button, a, input, textarea, [role='button']")) return;
+    const rect = drawer.getBoundingClientRect();
+    dragging = { drawer, dx: event.clientX - rect.left, dy: event.clientY - rect.top };
+    drawer.classList.add("is-dragging");
+    event.preventDefault();
+  }
+  function moveDrag(event) {
+    if (dragging) setWindowPosition(dragging.drawer, event.clientX - dragging.dx, event.clientY - dragging.dy);
+  }
+  function endDrag() {
+    dragging == null ? void 0 : dragging.drawer.classList.remove("is-dragging");
+    dragging = null;
   }
   function decorateDrawer(drawer) {
     drawer.classList.add("im-dingtalk-chat-hub");
     drawer.setAttribute("aria-label", "NodeLoc 聊天");
     document.documentElement.classList.add(HUB_CLASS);
+    syncWindowButton(drawer);
     document.querySelectorAll(".im-rail-item[data-rail-key]").forEach((item) => {
       item.classList.toggle("active", item.dataset.railKey === "messages");
     });
@@ -12735,50 +12818,69 @@ ${item.label}`;
         if (!document.documentElement.classList.contains(HUB_CLASS)) return;
         const current = nativeDrawer();
         if (current && !current.classList.contains("im-dingtalk-chat-hub")) decorateDrawer(current);
+        else if (current) syncWindowButton(current);
       });
       drawerObserver.observe(document.body, { childList: true, subtree: true });
     }
-    if (!outsideBound) {
-      outsideBound = true;
-      document.addEventListener("click", (event) => {
-        const close = event.target.closest(
-          '.im-dingtalk-chat-hub .c-navbar__toggle-drawer-button, .im-dingtalk-chat-hub button[title*="关闭聊天"], .im-dingtalk-chat-hub button[aria-label*="关闭聊天"]'
-        );
-        if (!close) return;
-        setTimeout(() => closeDingtalkChatHub({ closeNative: false }), 0);
-      }, true);
-    }
+    if (!controlsBound) bindControls();
+  }
+  function bindControls() {
+    controlsBound = true;
+    document.addEventListener("click", (event) => {
+      var _a2;
+      const windowToggle = event.target.closest(".im-dingtalk-chat-hub .c-navbar__full-page-button");
+      if (windowToggle) {
+        event.preventDefault();
+        event.stopPropagation();
+        (_a2 = event.stopImmediatePropagation) == null ? void 0 : _a2.call(event);
+        const current = nativeDrawer();
+        if (current) toggleChatWindow(current);
+        return;
+      }
+      const close = event.target.closest(
+        '.im-dingtalk-chat-hub .c-navbar__toggle-drawer-button, .im-dingtalk-chat-hub button[title*="关闭聊天"], .im-dingtalk-chat-hub button[aria-label*="关闭聊天"]'
+      );
+      if (close) setTimeout(() => closeDingtalkChatHub({ closeNative: false }), 0);
+    }, true);
+    document.addEventListener("pointerdown", (event) => {
+      const navbar = event.target.closest(".im-dingtalk-chat-hub .c-navbar");
+      const current = nativeDrawer();
+      if (navbar && current) beginDrag(event, current);
+    }, true);
+    document.addEventListener("pointermove", moveDrag, true);
+    document.addEventListener("pointerup", endDrag, true);
+    window.addEventListener("resize", () => {
+      const current = nativeDrawer();
+      if (!current || !document.documentElement.classList.contains("im-chat-hub-windowed")) return;
+      const rect = current.getBoundingClientRect();
+      setWindowPosition(current, rect.left, rect.top);
+    });
   }
   function waitForDrawer(attempt = 0) {
     const drawer = nativeDrawer();
-    if (drawer) {
-      decorateDrawer(drawer);
-      return;
-    }
+    if (drawer) return decorateDrawer(drawer);
     if (attempt < 20) setTimeout(() => waitForDrawer(attempt + 1), 50);
   }
   function closeDingtalkChatHub({ closeNative = true } = {}) {
-    var _a2, _b2;
+    var _a2, _b2, _c;
     const drawer = nativeDrawer();
-    document.documentElement.classList.remove(HUB_CLASS);
+    document.documentElement.classList.remove(HUB_CLASS, "im-chat-hub-windowed");
+    endDrag();
     drawerObserver == null ? void 0 : drawerObserver.disconnect();
     drawerObserver = null;
     drawer == null ? void 0 : drawer.classList.remove("im-dingtalk-chat-hub");
+    drawer == null ? void 0 : drawer.style.removeProperty("--im-chat-window-x");
+    drawer == null ? void 0 : drawer.style.removeProperty("--im-chat-window-y");
     (_a2 = document.querySelector('.im-rail-item[data-rail-key="messages"]')) == null ? void 0 : _a2.classList.remove("active");
     (_b2 = document.querySelector('.im-rail-item[data-rail-key="chat"]')) == null ? void 0 : _b2.classList.add("active");
+    document.dispatchEvent(new CustomEvent("im-chat-hub-close"));
     if (!closeNative || !drawer) return;
-    const close = drawer.querySelector(
-      '.c-navbar__toggle-drawer-button, button[title*="关闭聊天"], button[aria-label*="关闭聊天"]'
-    );
-    close == null ? void 0 : close.click();
+    (_c = drawer.querySelector('.c-navbar__toggle-drawer-button, button[title*="关闭聊天"], button[aria-label*="关闭聊天"]')) == null ? void 0 : _c.click();
   }
   function openDingtalkChatHub() {
     var _a2;
     const drawer = nativeDrawer();
-    if (drawer) {
-      decorateDrawer(drawer);
-      return;
-    }
+    if (drawer) return decorateDrawer(drawer);
     (_a2 = nativeChatToggle()) == null ? void 0 : _a2.click();
     waitForDrawer();
   }
@@ -12978,6 +13080,7 @@ ${item.label}`;
       if (SKIN_ID === "dingtalk") closeDingtalkWorkbench();
       if (SKIN_ID === "dingtalk" && key === "messages") {
         setNav2Open(false);
+        setActiveRailKey("messages", { force: true });
         openDingtalkChatHub();
         return;
       }
@@ -17256,7 +17359,7 @@ ${item.label}`;
       }
     }
     function bootstrap() {
-      console.info(`[nodeloc-im] v${"0.4.1"} loaded, skin=${SKIN_ID}`);
+      console.info(`[nodeloc-im] v${"0.4.2"} loaded, skin=${SKIN_ID}`);
       if (!document.documentElement) {
         setTimeout(bootstrap, 0);
         return;

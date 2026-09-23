@@ -588,10 +588,36 @@ export const CSS_DD = String.raw`
     .__ROOT_CLASS__.im-chat-hub-open .im-dingtalk-chat-hub .c-footer__item[aria-current="page"] {
       color: var(--im-blue) !important;
     }
+    .__ROOT_CLASS__.im-chat-hub-open .im-dingtalk-chat-hub .c-navbar__full-page-button svg { width: 18px !important; height: 18px !important; }
+    .__ROOT_CLASS__.im-chat-hub-windowed .chat-drawer-outlet,
+    .__ROOT_CLASS__.im-chat-hub-windowed .chat-drawer-outlet-container {
+      left: 0 !important; top: 0 !important; width: 100vw !important; height: 100vh !important;
+      pointer-events: none !important;
+    }
+    .__ROOT_CLASS__.im-chat-hub-windowed .chat-drawer.im-dingtalk-chat-hub {
+      position: fixed !important; inset: auto !important;
+      left: var(--im-chat-window-x, calc(100vw - 744px)) !important;
+      top: var(--im-chat-window-y, 64px) !important;
+      width: min(720px, calc(100vw - 32px)) !important;
+      height: min(680px, calc(100vh - 88px)) !important;
+      border: 1px solid var(--im-border) !important; border-radius: 12px !important;
+      box-shadow: 0 18px 55px rgba(31,35,41,.24) !important; pointer-events: auto !important;
+    }
+    .__ROOT_CLASS__.im-chat-hub-windowed .im-dingtalk-chat-hub .chat-drawer-container,
+    .__ROOT_CLASS__.im-chat-hub-windowed .im-dingtalk-chat-hub .chat-drawer-content { border-radius: inherit !important; }
+    .__ROOT_CLASS__.im-chat-hub-windowed .im-dingtalk-chat-hub .c-navbar { cursor: grab !important; user-select: none !important; }
+    .__ROOT_CLASS__.im-chat-hub-windowed .im-dingtalk-chat-hub.is-dragging {
+      transition: none !important; box-shadow: 0 22px 65px rgba(31,35,41,.32) !important;
+    }
+    .__ROOT_CLASS__.im-chat-hub-windowed .im-dingtalk-chat-hub.is-dragging .c-navbar { cursor: grabbing !important; }
     .__ROOT_CLASS__.im-chat-hub-open .im-list-panel,
     .__ROOT_CLASS__.im-chat-hub-open .im-chat-panel,
     .__ROOT_CLASS__.im-chat-hub-open .im-strip,
     .__ROOT_CLASS__.im-chat-hub-open .im-nav2 { visibility: hidden !important; pointer-events: none !important; }
+    .__ROOT_CLASS__.im-chat-hub-open.im-chat-hub-windowed .im-list-panel,
+    .__ROOT_CLASS__.im-chat-hub-open.im-chat-hub-windowed .im-chat-panel,
+    .__ROOT_CLASS__.im-chat-hub-open.im-chat-hub-windowed .im-strip,
+    .__ROOT_CLASS__.im-chat-hub-open.im-chat-hub-windowed .im-nav2 { visibility: visible !important; pointer-events: auto !important; }
 
     /* 右边缘拖拽柄：左右拉伸 rail */
     .im-rail-resizer {

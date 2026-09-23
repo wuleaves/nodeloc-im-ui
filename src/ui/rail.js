@@ -232,6 +232,7 @@ export function ensureRailDingtalk() {
     if (SKIN_ID === "dingtalk") closeDingtalkWorkbench();
     if (SKIN_ID === "dingtalk" && key === "messages") {
       setNav2Open(false);
+      setActiveRailKey("messages", { force: true });
       openDingtalkChatHub();
       return;
     }

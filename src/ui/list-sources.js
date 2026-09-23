@@ -28,6 +28,7 @@ export function activeRailKey() {
  *  通知列是临时覆盖：点通知进入后，任何路由跳转（头像回首页 / 顶部类别导航 /
  *  进话题）都不应让它继续占着中栏，否则怎么点都停在通知列（activeKey 卡死）。 */
 export function resetRailToChat() {
+  if (document.documentElement.classList.contains("im-chat-hub-open")) return;
   if (activeKey === "chat") return;
   setActiveRailKey("chat");
 }
@@ -133,4 +134,8 @@ export function ensureRailSources() {
     onScroll: notificationsScroll
   });
   registerExtraSources();
+  if (!document.documentElement.dataset.imChatHubCloseBound) {
+    document.documentElement.dataset.imChatHubCloseBound = "1";
+    document.addEventListener("im-chat-hub-close", () => setActiveRailKey("chat", { force: true }));
+  }
 }

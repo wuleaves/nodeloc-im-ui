@@ -98,6 +98,13 @@ for (const marker of ["function openDingtalkChatHub(", "im-dingtalk-chat-hub", "
   }
 }
 
+for (const marker of ["function toggleChatWindow(", "im-chat-hub-windowed", "小窗聊天"]) {
+  if (!output.includes(marker)) {
+    console.error(`missing draggable Chat window marker: ${marker}`);
+    ok = false;
+  }
+}
+
 if (ok) {
   console.log("self-check passed");
   process.exit(0);
