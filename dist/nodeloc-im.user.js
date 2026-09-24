@@ -2,7 +2,7 @@
 // @name         NodeLoc · IM 外观（钉钉 / 飞书 / 企业微信）
 // @namespace    https://www.nodeloc.com/
 // @author       czm15053, NodeLoc adaptation
-// @version      0.6.9
+// @version      0.7.0
 // @description  NodeLoc 三栏 IM 外观：节点/主题列表、帖子流、回复、搜索、用户与通知，支持三套皮肤和明暗主题。
 // @match        https://www.nodeloc.com/*
 // @noframes
@@ -17656,41 +17656,30 @@ ${item.label}`;
       (_h = document.querySelector(".im-titlebar")) == null ? void 0 : _h.remove();
     }
     let scheduled = false;
+    let applyTimer = 0;
     let lastPath = null;
     let lastApplyAt = 0;
     let observer = null;
     const APPLY_MIN_INTERVAL = 250;
-    const WATCHDOG_WINDOW = 5e3;
-    const WATCHDOG_MAX = 16;
-    let watchdogStart = 0;
-    let watchdogCount = 0;
-    let watchdogTripped = false;
     function scheduleApply() {
-      if (scheduled || watchdogTripped) return;
+      if (scheduled || applyTimer) return;
+      const wait = Math.max(0, APPLY_MIN_INTERVAL - (Date.now() - lastApplyAt));
+      if (wait > 0) {
+        applyTimer = window.setTimeout(() => {
+          applyTimer = 0;
+          scheduleApply();
+        }, wait);
+        return;
+      }
       scheduled = true;
       requestAnimationFrame(() => {
         scheduled = false;
         if (cfBlocked() || nativeNotFound()) return;
-        const now = Date.now();
-        if (now - lastApplyAt < APPLY_MIN_INTERVAL) return;
-        lastApplyAt = now;
-        if (now - watchdogStart > WATCHDOG_WINDOW) {
-          watchdogStart = now;
-          watchdogCount = 0;
-        }
-        if (++watchdogCount > WATCHDOG_MAX) {
-          watchdogTripped = true;
-          observer == null ? void 0 : observer.disconnect();
-          removePanels();
-          document.documentElement.classList.remove(ROOT_CLASS$1, DARK_CLASS, LOCK_CLASS, "im-topic-open");
-          console.warn("[nodeloc-im] 页面持续 DOM 抖动，已自动回退原生界面。地址:", location.href);
-          return;
-        }
+        lastApplyAt = Date.now();
         applyTheme();
       });
     }
     const scheduleSyncNewPosts = debounce(syncNewPostsFromDom, 600);
-    bootstrap();
     function nativeNotFound() {
       return !!document.querySelector("meta#discourse-error, #discourse-error, .page-not-found");
     }
@@ -17786,11 +17775,13 @@ ${item.label}`;
       }
     }
     function bootstrap() {
-      console.info(`[nodeloc-im] v${"0.6.9"} loaded, skin=${SKIN_ID}`);
       if (!document.documentElement) {
         setTimeout(bootstrap, 0);
         return;
       }
+      if (window.__nodelocImBootstrapped) return;
+      window.__nodelocImBootstrapped = true;
+      console.info(`[nodeloc-im] v${"0.7.0"} loaded, skin=${SKIN_ID}`);
       if (cfBlocked() || nativeNotFound()) ;
       else {
         injectStyle();
@@ -17839,9 +17830,21 @@ ${item.label}`;
       }
       window.addEventListener("popstate", scheduleApply);
       window.addEventListener("hashchange", scheduleApply);
+      window.addEventListener("load", scheduleApply, { once: true });
+      window.addEventListener("pageshow", scheduleApply);
+      window.addEventListener("online", scheduleApply);
       document.addEventListener("DOMContentLoaded", scheduleApply, { once: true });
       document.addEventListener("turbo:load", scheduleApply);
       document.addEventListener("page:changed", scheduleApply);
+      for (const delay of [50, 150, 350, 750, 1500, 3e3, 6e3, 1e4]) {
+        setTimeout(scheduleApply, delay);
+      }
+      if (!window.__imBootstrapHealthTimer) {
+        window.__imBootstrapHealthTimer = setInterval(() => {
+          if (getViewMode() === "native" || otherThemeActive() || cfBlocked() || nativeNotFound()) return;
+          if (!document.querySelector(".im-rail") || !document.getElementById(STYLE_ID)) scheduleApply();
+        }, 2e3);
+      }
       if (!window.__imNotifBadgeTimer) {
         window.__imNotifBadgeTimer = setInterval(() => {
           if (getViewMode() === "native" || otherThemeActive()) return;

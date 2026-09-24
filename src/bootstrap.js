@@ -152,53 +152,37 @@ export function run() {
 
 
   let scheduled = false;
+  let applyTimer = 0;
   let lastPath = null;
   let lastApplyAt = 0;
   let observer = null;
   // 异常页（404 / CF 挑战等）可能持续变动 DOM，observer 每帧都会触发；
   // 若 applyTheme 也每帧全量重建三栏会把主线程占满导致标签卡死。加最小执行间隔。
   const APPLY_MIN_INTERVAL = 250;
-  // 看门狗：短窗口内 applyTheme 仍被高频触发（异常页持续抖动的典型特征）时，
-  // 摘掉 observer 并回退原生界面，避免主线程被拖死；console 留现场证据便于定位。
-  const WATCHDOG_WINDOW = 5000;
-  const WATCHDOG_MAX = 16;
-  let watchdogStart = 0;
-  let watchdogCount = 0;
-  let watchdogTripped = false;
 
   function scheduleApply() {
-    if (scheduled || watchdogTripped) return;
+    if (scheduled || applyTimer) return;
+    // 不能直接丢弃限流窗口内的调用：document-start 最关键的“页面已就绪”通知
+    // 经常恰好落在这里。改成尾随执行，确保最后一次 DOM/路由变化一定被消费。
+    const wait = Math.max(0, APPLY_MIN_INTERVAL - (Date.now() - lastApplyAt));
+    if (wait > 0) {
+      applyTimer = window.setTimeout(() => {
+        applyTimer = 0;
+        scheduleApply();
+      }, wait);
+      return;
+    }
     scheduled = true;
     requestAnimationFrame(() => {
       scheduled = false;
       if (cfBlocked() || nativeNotFound()) return; // CF 挑战页/无效话题页完全静默：不执行 applyTheme，避免干扰挑战脚本重试
-      const now = Date.now();
-      if (now - lastApplyAt < APPLY_MIN_INTERVAL) return;
-      lastApplyAt = now;
-      if (now - watchdogStart > WATCHDOG_WINDOW) {
-        watchdogStart = now;
-        watchdogCount = 0;
-      }
-      if (++watchdogCount > WATCHDOG_MAX) {
-        watchdogTripped = true;
-        observer?.disconnect();
-        removePanels();
-        document.documentElement.classList.remove(ROOT_CLASS, DARK_CLASS, LOCK_CLASS, "im-topic-open");
-        console.warn("[nodeloc-im] 页面持续 DOM 抖动，已自动回退原生界面。地址:", location.href);
-        return;
-      }
+      lastApplyAt = Date.now();
       applyTheme();
     });
   }
 
 
   const scheduleSyncNewPosts = debounce(syncNewPostsFromDom, 600);
-
-
-
-
-  bootstrap();
-
 
   /* ============================== 编排（合并版） ============================== */
 
@@ -318,11 +302,13 @@ export function run() {
   }
 
   function bootstrap() {
-    console.info(`[nodeloc-im] v${__IM_VERSION__} loaded, skin=${SKIN_ID}`);
     if (!document.documentElement) {
       setTimeout(bootstrap, 0);
       return;
     }
+    if (window.__nodelocImBootstrapped) return;
+    window.__nodelocImBootstrapped = true;
+    console.info(`[nodeloc-im] v${__IM_VERSION__} loaded, skin=${SKIN_ID}`);
     if (cfBlocked() || nativeNotFound()) {
       // 挑战页 / 无效话题页：document-start 不做任何套皮（原皮），等真实内容替换后由 observer 复检恢复
     } else {
@@ -379,9 +365,24 @@ export function run() {
     }
     window.addEventListener("popstate", scheduleApply);
     window.addEventListener("hashchange", scheduleApply);
+    window.addEventListener("load", scheduleApply, { once: true });
+    window.addEventListener("pageshow", scheduleApply);
+    window.addEventListener("online", scheduleApply);
     document.addEventListener("DOMContentLoaded", scheduleApply, { once: true });
     document.addEventListener("turbo:load", scheduleApply);
     document.addEventListener("page:changed", scheduleApply);
+
+    // document-start 时 Discourse 的应用壳、预载用户和路由可能分批到达；短期阶梯重试
+    // 覆盖慢网首屏。之后健康检查只在“应显示但 rail 缺失”时触发，正常页面零重绘。
+    for (const delay of [50, 150, 350, 750, 1500, 3000, 6000, 10000]) {
+      setTimeout(scheduleApply, delay);
+    }
+    if (!window.__imBootstrapHealthTimer) {
+      window.__imBootstrapHealthTimer = setInterval(() => {
+        if (getViewMode() === "native" || otherThemeActive() || cfBlocked() || nativeNotFound()) return;
+        if (!document.querySelector(".im-rail") || !document.getElementById(STYLE_ID)) scheduleApply();
+      }, 2000);
+    }
 
     // 定时同步头像通知角标（currentUser 未读数会变）
     if (!window.__imNotifBadgeTimer) {
