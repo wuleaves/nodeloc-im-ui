@@ -2,7 +2,7 @@
 // @name         NodeLoc · IM 外观（钉钉 / 飞书 / 企业微信）
 // @namespace    https://www.nodeloc.com/
 // @author       czm15053, NodeLoc adaptation
-// @version      0.7.7
+// @version      0.7.8
 // @description  NodeLoc 三栏 IM 外观：节点/主题列表、帖子流、回复、搜索、用户与通知，支持三套皮肤和明暗主题。
 // @match        https://www.nodeloc.com/*
 // @noframes
@@ -17423,6 +17423,7 @@ ${item.label}`;
     let bar = document.querySelector(".im-titlebar");
     if (bar) {
       bindTitlebarSearch(bar);
+      bindNativeViewToggle(bar);
       bindRailAvatarNotif(bar);
       (_a2 = skinHooks.darkToggle) == null ? void 0 : _a2.call(skinHooks, bar);
       return bar;
@@ -17442,14 +17443,31 @@ ${item.label}`;
     </div>
     <div class="title-actions">
       <button type="button" class="t-btn im-dark-toggle" title="深色模式：关（点击开启）" aria-pressed="false">${ICONS.moon}</button>
-      <button type="button" class="t-btn" title="投屏" aria-hidden="true"><span class="dot"></span>${ICONS.monitor}</button>
+      <button type="button" class="t-btn im-native-view-toggle" title="切换回 NodeLoc 原生界面" aria-label="切换回 NodeLoc 原生界面"><span class="dot"></span>${ICONS.monitor}</button>
       <button type="button" class="t-btn" title="创建" aria-hidden="true">${ICONS.plus}</button>
     </div>`;
     document.body.appendChild(bar);
     bindTitlebarSearch(bar);
+    bindNativeViewToggle(bar);
     bindRailAvatarNotif(bar);
     (_b2 = skinHooks.darkToggle) == null ? void 0 : _b2.call(skinHooks, bar);
     return bar;
+  }
+  function bindNativeViewToggle(bar) {
+    const btn = bar.querySelector(".im-native-view-toggle") || bar.querySelector('.title-actions > .t-btn[title="投屏"]');
+    if (!btn) return;
+    btn.classList.add("im-native-view-toggle");
+    btn.removeAttribute("aria-hidden");
+    btn.title = "切换回 NodeLoc 原生界面";
+    btn.setAttribute("aria-label", "切换回 NodeLoc 原生界面");
+    if (btn.dataset.imNativeViewBound === "1") return;
+    btn.dataset.imNativeViewBound = "1";
+    btn.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setViewMode("native");
+      location.reload();
+    });
   }
   function bindTitlebarSearch(bar) {
     if (!bar) return;
@@ -17987,7 +18005,7 @@ ${item.label}`;
       }
       if (window.__nodelocImBootstrapped) return;
       window.__nodelocImBootstrapped = true;
-      console.info(`[nodeloc-im] v${"0.7.7"} loaded, skin=${SKIN_ID}`);
+      console.info(`[nodeloc-im] v${"0.7.8"} loaded, skin=${SKIN_ID}`);
       if (cfBlocked() || nativeNotFound()) ;
       else {
         injectStyle();

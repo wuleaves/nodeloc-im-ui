@@ -3,11 +3,13 @@ import { ICONS } from "../config/icons.js";
 import { bindSearchTrigger } from "./search-popup.js";
 import { bindRailAvatarNotif } from "./rail.js";
 import { skinHooks } from "../skins/hooks.js";
+import { setViewMode } from "../state/view-state.js";
 
 export function ensureTitlebar() {
   let bar = document.querySelector(".im-titlebar");
   if (bar) {
     bindTitlebarSearch(bar);
+    bindNativeViewToggle(bar);
     bindRailAvatarNotif(bar);
     skinHooks.darkToggle?.(bar);
     return bar;
@@ -27,15 +29,35 @@ export function ensureTitlebar() {
     </div>
     <div class="title-actions">
       <button type="button" class="t-btn im-dark-toggle" title="深色模式：关（点击开启）" aria-pressed="false">${ICONS.moon}</button>
-      <button type="button" class="t-btn" title="投屏" aria-hidden="true"><span class="dot"></span>${ICONS.monitor}</button>
+      <button type="button" class="t-btn im-native-view-toggle" title="切换回 NodeLoc 原生界面" aria-label="切换回 NodeLoc 原生界面"><span class="dot"></span>${ICONS.monitor}</button>
       <button type="button" class="t-btn" title="创建" aria-hidden="true">${ICONS.plus}</button>
     </div>`;
   document.body.appendChild(bar);
   bindTitlebarSearch(bar);
+  bindNativeViewToggle(bar);
   bindRailAvatarNotif(bar);
   skinHooks.darkToggle?.(bar);
   return bar;
 }
+
+function bindNativeViewToggle(bar) {
+  // 兼容页面上由旧版本脚本创建、尚未重建的“投屏”装饰按钮。
+  const btn = bar.querySelector(".im-native-view-toggle") || bar.querySelector('.title-actions > .t-btn[title="投屏"]');
+  if (!btn) return;
+  btn.classList.add("im-native-view-toggle");
+  btn.removeAttribute("aria-hidden");
+  btn.title = "切换回 NodeLoc 原生界面";
+  btn.setAttribute("aria-label", "切换回 NodeLoc 原生界面");
+  if (btn.dataset.imNativeViewBound === "1") return;
+  btn.dataset.imNativeViewBound = "1";
+  btn.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setViewMode("native");
+    location.reload();
+  });
+}
+
 function bindTitlebarSearch(bar) {
   if (!bar) return;
   const wrap = bar.querySelector(".title-search");
