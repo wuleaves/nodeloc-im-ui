@@ -2,7 +2,7 @@
 // @name         NodeLoc · IM 外观（钉钉 / 飞书 / 企业微信）
 // @namespace    https://www.nodeloc.com/
 // @author       czm15053, NodeLoc adaptation
-// @version      0.7.2
+// @version      0.7.3
 // @description  NodeLoc 三栏 IM 外观：节点/主题列表、帖子流、回复、搜索、用户与通知，支持三套皮肤和明暗主题。
 // @match        https://www.nodeloc.com/*
 // @noframes
@@ -13710,16 +13710,28 @@ ${item.label}`;
     const avatar = rail == null ? void 0 : rail.querySelector(".im-rail-avatar");
     if (!avatar || avatar.dataset.notifBound === "1") return;
     avatar.dataset.notifBound = "1";
-    avatar.title = SKIN_ID === "dingtalk" ? "个人资料" : "";
+    avatar.title = SKIN_ID === "dingtalk" ? "查看原生个人总结" : "";
     avatar.setAttribute("role", "button");
-    avatar.setAttribute("aria-haspopup", "menu");
-    avatar.setAttribute("aria-expanded", "false");
+    if (SKIN_ID === "dingtalk") avatar.setAttribute("aria-label", "查看原生个人总结");
+    else {
+      avatar.setAttribute("aria-haspopup", "menu");
+      avatar.setAttribute("aria-expanded", "false");
+    }
     avatar.addEventListener("click", (e) => {
       if (getViewMode() === "native" || otherThemeActive()) return;
       if (SKIN_ID === "dingtalk") {
         e.preventDefault();
         e.stopPropagation();
-        toggleDingtalkProfileMenu();
+        const username = getCurrentUsername();
+        if (!username) {
+          toggleDingtalkProfileMenu();
+          return;
+        }
+        closeDingtalkProfileMenu();
+        closeDingtalkWorkbench();
+        closeDingtalkChatHub();
+        setViewMode("native");
+        location.assign(`/u/${encodeURIComponent(username)}/summary`);
         return;
       }
       if (!interceptionAvailable()) return;
@@ -17840,7 +17852,7 @@ ${item.label}`;
       }
       if (window.__nodelocImBootstrapped) return;
       window.__nodelocImBootstrapped = true;
-      console.info(`[nodeloc-im] v${"0.7.2"} loaded, skin=${SKIN_ID}`);
+      console.info(`[nodeloc-im] v${"0.7.3"} loaded, skin=${SKIN_ID}`);
       if (cfBlocked() || nativeNotFound()) ;
       else {
         injectStyle();

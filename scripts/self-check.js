@@ -120,6 +120,13 @@ for (const marker of ["function toggleNotifStrip(", "im-notif-strip-expanded", "
   }
 }
 
+for (const marker of ["查看原生个人总结", "setViewMode(\"native\")", "/summary`)"]) {
+  if (!output.includes(marker)) {
+    console.error(`missing native avatar-summary marker: ${marker}`);
+    ok = false;
+  }
+}
+
 if (ok) {
   console.log("self-check passed");
   process.exit(0);

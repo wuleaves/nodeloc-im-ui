@@ -10,7 +10,7 @@ import { getEmberOwner, safeLookup } from "../bridge/discourse.js";
 import { pg } from "../bridge/page.js";
 import { getCurrentUsername } from "../bridge/user.js";
 import { listState } from "../state/list-state.js";
-import { getViewMode } from "../state/view-state.js";
+import { getViewMode, setViewMode } from "../state/view-state.js";
 import { avatarColor, avatarLetter } from "./shared/avatars.js";
 import { activeRailKey, hasSource, setActiveRailKey } from "./list-sources.js";
 import { toggleNotifStrip } from "../state/notif-strip-state.js";
@@ -570,21 +570,33 @@ function toggleDingtalkProfileMenu() {
   }
 }
 
-/** rail / titlebar 左上角头像：钉钉皮肤显示原生个人菜单；其他皮肤保持原行为。 */
+/** rail / titlebar 左上角头像：钉钉皮肤直达当前用户的原生「总结」页；其他皮肤保持原行为。 */
 export function bindRailAvatarNotif(rail) {
   const avatar = rail?.querySelector(".im-rail-avatar");
   if (!avatar || avatar.dataset.notifBound === "1") return;
   avatar.dataset.notifBound = "1";
-  avatar.title = SKIN_ID === "dingtalk" ? "个人资料" : "";
+  avatar.title = SKIN_ID === "dingtalk" ? "查看原生个人总结" : "";
   avatar.setAttribute("role", "button");
-  avatar.setAttribute("aria-haspopup", "menu");
-  avatar.setAttribute("aria-expanded", "false");
+  if (SKIN_ID === "dingtalk") avatar.setAttribute("aria-label", "查看原生个人总结");
+  else {
+    avatar.setAttribute("aria-haspopup", "menu");
+    avatar.setAttribute("aria-expanded", "false");
+  }
   avatar.addEventListener("click", (e) => {
     if (getViewMode() === "native" || otherThemeActive()) return;
     if (SKIN_ID === "dingtalk") {
       e.preventDefault();
       e.stopPropagation();
-      toggleDingtalkProfileMenu();
+      const username = getCurrentUsername();
+      if (!username) {
+        toggleDingtalkProfileMenu();
+        return;
+      }
+      closeDingtalkProfileMenu();
+      closeDingtalkWorkbench();
+      closeDingtalkChatHub();
+      setViewMode("native");
+      location.assign(`/u/${encodeURIComponent(username)}/summary`);
       return;
     }
     if (!interceptionAvailable()) return; // 降级：原生菜单行为保留
