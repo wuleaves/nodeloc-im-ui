@@ -313,7 +313,8 @@ export const CSS_DD = String.raw`
     .__ROOT_CLASS__.im-profile-open .user-menu.im-dingtalk-profile-menu .d-icon {
       width: 18px !important; height: 18px !important; flex: 0 0 18px !important;
     }
-    .im-strip-account.is-profile-open {
+    .im-strip-account.is-profile-open,
+    .im-strip-progress.is-profile-open {
       background: var(--im-accent-soft) !important;
       color: var(--im-accent) !important;
     }

@@ -2,7 +2,7 @@
 // @name         NodeLoc · IM 外观（钉钉 / 飞书 / 企业微信）
 // @namespace    https://www.nodeloc.com/
 // @author       czm15053, NodeLoc adaptation
-// @version      0.7.6
+// @version      0.7.7
 // @description  NodeLoc 三栏 IM 外观：节点/主题列表、帖子流、回复、搜索、用户与通知，支持三套皮肤和明暗主题。
 // @match        https://www.nodeloc.com/*
 // @noframes
@@ -493,7 +493,8 @@
     .__ROOT_CLASS__.im-profile-open .user-menu.im-dingtalk-profile-menu .d-icon {
       width: 18px !important; height: 18px !important; flex: 0 0 18px !important;
     }
-    .im-strip-account.is-profile-open {
+    .im-strip-account.is-profile-open,
+    .im-strip-progress.is-profile-open {
       background: var(--im-accent-soft) !important;
       color: var(--im-accent) !important;
     }
@@ -12275,6 +12276,7 @@ ${data.raw}
     all: OUTLINE_ICON(`<path d="M6 16.2h12l-1.2-2.2a6.6 6.6 0 0 1-.8-3.2V9.5a4 4 0 1 0-8 0v1.3c0 1.14-.27 2.2-.8 3.2L6 16.2Z"/><path d="M10 18.5a2 2 0 0 0 4 0"/>`),
     replied: OUTLINE_ICON(`<path d="M9.5 14.5 4.5 9.5l5-5"/><path d="M4.5 9.5h9.5a5.5 5.5 0 0 1 0 11h-3"/>`),
     liked: OUTLINE_ICON(`<path d="M12 20.3 4.9 13a4.7 4.7 0 0 1 0-6.6 4.5 4.5 0 0 1 6.4 0l.7.7.7-.7a4.5 4.5 0 0 1 6.4 0 4.7 4.7 0 0 1 0 6.6L12 20.3Z"/>`),
+    progress: OUTLINE_ICON(`<path d="M12 19V5"/><path d="m7 10 5-5 5 5"/>`),
     private: OUTLINE_ICON(`<rect x="4" y="6" width="16" height="12" rx="2"/><path d="m5 8 7 5 7-5"/>`),
     bookmarks: OUTLINE_ICON(`<path d="M7 4.5h10a1 1 0 0 1 1 1V20l-6-4-6 4V5.5a1 1 0 0 1 1-1Z"/>`),
     assigned: OUTLINE_ICON(`<circle cx="10" cy="8.5" r="3.2"/><path d="M4.5 19.5a5.5 5.5 0 0 1 11 0"/><path d="M18.5 8v5M16 10.5h5"/>`),
@@ -12492,8 +12494,13 @@ ${data.raw}
   }
   function ensureNotifStrip() {
     let strip = document.querySelector(".im-strip");
-    const stripFilters = SKIN_ID === "dingtalk" ? FILTERS.filter((f) => DINGTALK_STRIP_KEYS.has(f.key)) : FILTERS;
-    const version = SKIN_ID === "dingtalk" ? "4-dingtalk" : "4-all";
+    let stripFilters = SKIN_ID === "dingtalk" ? FILTERS.filter((f) => DINGTALK_STRIP_KEYS.has(f.key)) : FILTERS;
+    if (SKIN_ID === "dingtalk") {
+      stripFilters = [...stripFilters];
+      const likedIndex = stripFilters.findIndex((f) => f.key === "liked");
+      stripFilters.splice(likedIndex + 1, 0, { key: "progress", label: "会员进度", kind: "native-progress" });
+    }
+    const version = SKIN_ID === "dingtalk" ? "5-dingtalk" : "5-all";
     const trapped = strip == null ? void 0 : strip.querySelector(".user-menu");
     if (trapped) document.body.appendChild(trapped);
     if (strip && strip.dataset.ver === version && strip.querySelector(".im-strip-item[data-ntype]")) {
@@ -12507,9 +12514,17 @@ ${data.raw}
     strip.setAttribute("aria-label", "通知筛选");
     strip.innerHTML = stripFilters.map((f) => {
       const account = SKIN_ID === "dingtalk" && f.key === "other";
-      return `<button type="button" class="im-strip-item${account ? " im-strip-account" : ""}" ` + (account ? `data-strip-account="1" title="账户与更多" aria-haspopup="menu" aria-expanded="false"` : `data-ntype="${f.key}" title="${f.label}" aria-pressed="false"`) + `>${FILTER_ICONS[f.key] || FILTER_ICONS.all}` + (f.key === "all" ? `<span class="im-strip-badge" style="display:none"></span>` : "") + `</button>`;
+      const progress = SKIN_ID === "dingtalk" && f.kind === "native-progress";
+      return `<button type="button" class="im-strip-item${account ? " im-strip-account" : ""}${progress ? " im-strip-progress" : ""}" ` + (account ? `data-strip-account="1" title="账户与更多" aria-haspopup="menu" aria-expanded="false"` : progress ? `data-strip-progress="1" title="会员进度" aria-haspopup="menu" aria-expanded="false"` : `data-ntype="${f.key}" title="${f.label}" aria-pressed="false"`) + `>${FILTER_ICONS[f.key] || FILTER_ICONS.all}` + (f.key === "all" ? `<span class="im-strip-badge" style="display:none"></span>` : "") + `</button>`;
     }).join("");
     strip.addEventListener("click", (e) => {
+      const progress = e.target.closest(".im-strip-progress[data-strip-progress]");
+      if (progress) {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleDingtalkProfileMenu("progress");
+        return;
+      }
       const account = e.target.closest(".im-strip-account[data-strip-account]");
       if (account) {
         e.preventDefault();
@@ -13730,7 +13745,7 @@ ${item.label}`;
       el.classList.remove("is-profile-open");
       el.setAttribute("aria-expanded", "false");
     });
-    document.querySelectorAll(".im-strip-account.is-profile-open").forEach((el) => {
+    document.querySelectorAll(".im-strip-account.is-profile-open, .im-strip-progress.is-profile-open").forEach((el) => {
       el.classList.remove("is-profile-open", "active");
       el.setAttribute("aria-expanded", "false");
     });
@@ -13742,11 +13757,23 @@ ${item.label}`;
       profileMenuOpening = false;
     }
   }
-  function decorateDingtalkProfileMenu(menu) {
-    const profileTab = menu.querySelector("#user-menu-button-profile, [data-tab-id='profile']");
-    if (profileTab && profileTab.getAttribute("aria-selected") !== "true") profileTab.click();
+  function nativeProfileMenuTab(menu, targetTab) {
+    if (targetTab !== "progress") {
+      return menu.querySelector("#user-menu-button-profile, [data-tab-id='profile']");
+    }
+    const tabs = [...menu.querySelectorAll(".tabs-list a, .tabs-list button, [role='tab']")];
+    const semantic = tabs.find((tab) => {
+      const hint = [tab.id, tab.dataset.tabId, tab.title, tab.getAttribute("aria-label"), tab.textContent].filter(Boolean).join(" ").toLowerCase();
+      return /(?:membership|member|level|progress|trust|upgrade|会员|等级|进度)/.test(hint);
+    });
+    return semantic || tabs[5] || null;
+  }
+  function decorateDingtalkProfileMenu(menu, targetTab = "profile") {
+    const requestedTab = nativeProfileMenuTab(menu, targetTab);
+    if (requestedTab && requestedTab.getAttribute("aria-selected") !== "true") requestedTab.click();
     requestAnimationFrame(() => {
       const activeMenu = document.querySelector(".user-menu") || menu;
+      activeMenu.dataset.imLauncher = targetTab;
       activeMenu.classList.add("im-user-menu-float", DINGTALK_PROFILE_CLASS);
       if (activeMenu.dataset.imProfileCleanupBound !== "1") {
         activeMenu.dataset.imProfileCleanupBound = "1";
@@ -13774,20 +13801,24 @@ ${item.label}`;
         el.classList.add("is-profile-open");
         el.setAttribute("aria-expanded", "true");
       });
-      document.querySelectorAll(".im-strip-account").forEach((el) => {
-        el.classList.add("is-profile-open", "active");
-        el.setAttribute("aria-expanded", "true");
+      document.querySelectorAll(".im-strip-account, .im-strip-progress").forEach((el) => {
+        const on = targetTab === "progress" ? el.classList.contains("im-strip-progress") : el.classList.contains("im-strip-account");
+        el.classList.toggle("is-profile-open", on);
+        el.classList.toggle("active", on);
+        el.setAttribute("aria-expanded", on ? "true" : "false");
       });
     });
   }
-  function waitForDingtalkProfileMenu(attempt = 0) {
+  function waitForDingtalkProfileMenu(targetTab = "profile", attempt = 0) {
     const menu = document.querySelector(".user-menu");
-    if (menu) return decorateDingtalkProfileMenu(menu);
-    if (attempt < 12) setTimeout(() => waitForDingtalkProfileMenu(attempt + 1), 40);
+    if (menu) return decorateDingtalkProfileMenu(menu, targetTab);
+    if (attempt < 12) setTimeout(() => waitForDingtalkProfileMenu(targetTab, attempt + 1), 40);
   }
-  function toggleDingtalkProfileMenu() {
+  function toggleDingtalkProfileMenu(targetTab = "profile") {
     if (document.documentElement.classList.contains("im-profile-open")) {
-      closeDingtalkProfileMenu();
+      const menu = document.querySelector(`.user-menu.${DINGTALK_PROFILE_CLASS}`);
+      if ((menu == null ? void 0 : menu.dataset.imLauncher) !== targetTab) decorateDingtalkProfileMenu(menu, targetTab);
+      else closeDingtalkProfileMenu();
       return;
     }
     closeDingtalkWorkbench();
@@ -13797,12 +13828,12 @@ ${item.label}`;
     profileMenuOpening = true;
     toggle.click();
     profileMenuOpening = false;
-    waitForDingtalkProfileMenu();
+    waitForDingtalkProfileMenu(targetTab);
     if (!profileMenuOutsideBound) {
       profileMenuOutsideBound = true;
       document.addEventListener("click", (event) => {
         if (!document.documentElement.classList.contains("im-profile-open")) return;
-        if (event.target.closest(`.${DINGTALK_PROFILE_CLASS}, .im-rail-avatar, .im-strip-account`)) return;
+        if (event.target.closest(`.${DINGTALK_PROFILE_CLASS}, .im-rail-avatar, .im-strip-account, .im-strip-progress`)) return;
         closeDingtalkProfileMenu();
       });
       document.addEventListener("keydown", (event) => {
@@ -17956,7 +17987,7 @@ ${item.label}`;
       }
       if (window.__nodelocImBootstrapped) return;
       window.__nodelocImBootstrapped = true;
-      console.info(`[nodeloc-im] v${"0.7.6"} loaded, skin=${SKIN_ID}`);
+      console.info(`[nodeloc-im] v${"0.7.7"} loaded, skin=${SKIN_ID}`);
       if (cfBlocked() || nativeNotFound()) ;
       else {
         injectStyle();

@@ -505,7 +505,7 @@ function closeDingtalkProfileMenu({ closeNative = true } = {}) {
     el.classList.remove("is-profile-open");
     el.setAttribute("aria-expanded", "false");
   });
-  document.querySelectorAll(".im-strip-account.is-profile-open").forEach((el) => {
+  document.querySelectorAll(".im-strip-account.is-profile-open, .im-strip-progress.is-profile-open").forEach((el) => {
     el.classList.remove("is-profile-open", "active");
     el.setAttribute("aria-expanded", "false");
   });
@@ -518,11 +518,26 @@ function closeDingtalkProfileMenu({ closeNative = true } = {}) {
   }
 }
 
-function decorateDingtalkProfileMenu(menu) {
-  const profileTab = menu.querySelector("#user-menu-button-profile, [data-tab-id='profile']");
-  if (profileTab && profileTab.getAttribute("aria-selected") !== "true") profileTab.click();
+function nativeProfileMenuTab(menu, targetTab) {
+  if (targetTab !== "progress") {
+    return menu.querySelector("#user-menu-button-profile, [data-tab-id='profile']");
+  }
+  const tabs = [...menu.querySelectorAll(".tabs-list a, .tabs-list button, [role='tab']")];
+  const semantic = tabs.find((tab) => {
+    const hint = [tab.id, tab.dataset.tabId, tab.title, tab.getAttribute("aria-label"), tab.textContent]
+      .filter(Boolean).join(" ").toLowerCase();
+    return /(?:membership|member|level|progress|trust|upgrade|会员|等级|进度)/.test(hint);
+  });
+  // NodeLoc 原生账户栏固定顺序中，会员进度位于书签之后（第 6 项）。
+  return semantic || tabs[5] || null;
+}
+
+function decorateDingtalkProfileMenu(menu, targetTab = "profile") {
+  const requestedTab = nativeProfileMenuTab(menu, targetTab);
+  if (requestedTab && requestedTab.getAttribute("aria-selected") !== "true") requestedTab.click();
   requestAnimationFrame(() => {
     const activeMenu = document.querySelector(".user-menu") || menu;
+    activeMenu.dataset.imLauncher = targetTab;
     activeMenu.classList.add("im-user-menu-float", DINGTALK_PROFILE_CLASS);
     if (activeMenu.dataset.imProfileCleanupBound !== "1") {
       activeMenu.dataset.imProfileCleanupBound = "1";
@@ -551,22 +566,28 @@ function decorateDingtalkProfileMenu(menu) {
       el.classList.add("is-profile-open");
       el.setAttribute("aria-expanded", "true");
     });
-    document.querySelectorAll(".im-strip-account").forEach((el) => {
-      el.classList.add("is-profile-open", "active");
-      el.setAttribute("aria-expanded", "true");
+    document.querySelectorAll(".im-strip-account, .im-strip-progress").forEach((el) => {
+      const on = targetTab === "progress"
+        ? el.classList.contains("im-strip-progress")
+        : el.classList.contains("im-strip-account");
+      el.classList.toggle("is-profile-open", on);
+      el.classList.toggle("active", on);
+      el.setAttribute("aria-expanded", on ? "true" : "false");
     });
   });
 }
 
-function waitForDingtalkProfileMenu(attempt = 0) {
+function waitForDingtalkProfileMenu(targetTab = "profile", attempt = 0) {
   const menu = document.querySelector(".user-menu");
-  if (menu) return decorateDingtalkProfileMenu(menu);
-  if (attempt < 12) setTimeout(() => waitForDingtalkProfileMenu(attempt + 1), 40);
+  if (menu) return decorateDingtalkProfileMenu(menu, targetTab);
+  if (attempt < 12) setTimeout(() => waitForDingtalkProfileMenu(targetTab, attempt + 1), 40);
 }
 
-export function toggleDingtalkProfileMenu() {
+export function toggleDingtalkProfileMenu(targetTab = "profile") {
   if (document.documentElement.classList.contains("im-profile-open")) {
-    closeDingtalkProfileMenu();
+    const menu = document.querySelector(`.user-menu.${DINGTALK_PROFILE_CLASS}`);
+    if (menu?.dataset.imLauncher !== targetTab) decorateDingtalkProfileMenu(menu, targetTab);
+    else closeDingtalkProfileMenu();
     return;
   }
   closeDingtalkWorkbench();
@@ -576,12 +597,12 @@ export function toggleDingtalkProfileMenu() {
   profileMenuOpening = true;
   toggle.click();
   profileMenuOpening = false;
-  waitForDingtalkProfileMenu();
+  waitForDingtalkProfileMenu(targetTab);
   if (!profileMenuOutsideBound) {
     profileMenuOutsideBound = true;
     document.addEventListener("click", (event) => {
       if (!document.documentElement.classList.contains("im-profile-open")) return;
-      if (event.target.closest(`.${DINGTALK_PROFILE_CLASS}, .im-rail-avatar, .im-strip-account`)) return;
+      if (event.target.closest(`.${DINGTALK_PROFILE_CLASS}, .im-rail-avatar, .im-strip-account, .im-strip-progress`)) return;
       closeDingtalkProfileMenu();
     });
     document.addEventListener("keydown", (event) => {

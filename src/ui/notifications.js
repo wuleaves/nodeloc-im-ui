@@ -52,6 +52,7 @@ const FILTER_ICONS = {
   all: OUTLINE_ICON(`<path d="M6 16.2h12l-1.2-2.2a6.6 6.6 0 0 1-.8-3.2V9.5a4 4 0 1 0-8 0v1.3c0 1.14-.27 2.2-.8 3.2L6 16.2Z"/><path d="M10 18.5a2 2 0 0 0 4 0"/>`),
   replied: OUTLINE_ICON(`<path d="M9.5 14.5 4.5 9.5l5-5"/><path d="M4.5 9.5h9.5a5.5 5.5 0 0 1 0 11h-3"/>`),
   liked: OUTLINE_ICON(`<path d="M12 20.3 4.9 13a4.7 4.7 0 0 1 0-6.6 4.5 4.5 0 0 1 6.4 0l.7.7.7-.7a4.5 4.5 0 0 1 6.4 0 4.7 4.7 0 0 1 0 6.6L12 20.3Z"/>`),
+  progress: OUTLINE_ICON(`<path d="M12 19V5"/><path d="m7 10 5-5 5 5"/>`),
   private: OUTLINE_ICON(`<rect x="4" y="6" width="16" height="12" rx="2"/><path d="m5 8 7 5 7-5"/>`),
   bookmarks: OUTLINE_ICON(`<path d="M7 4.5h10a1 1 0 0 1 1 1V20l-6-4-6 4V5.5a1 1 0 0 1 1-1Z"/>`),
   assigned: OUTLINE_ICON(`<circle cx="10" cy="8.5" r="3.2"/><path d="M4.5 19.5a5.5 5.5 0 0 1 11 0"/><path d="M18.5 8v5M16 10.5h5"/>`),
@@ -303,10 +304,15 @@ export function onNotificationsChip(chip) {
 /** 构建筛选窄条；旧装饰条（项上无 data-ntype）重建。钉钉/飞书由分派层调用。 */
 export function ensureNotifStrip() {
   let strip = document.querySelector(".im-strip");
-  const stripFilters = SKIN_ID === "dingtalk"
+  let stripFilters = SKIN_ID === "dingtalk"
     ? FILTERS.filter((f) => DINGTALK_STRIP_KEYS.has(f.key))
     : FILTERS;
-  const version = SKIN_ID === "dingtalk" ? "4-dingtalk" : "4-all";
+  if (SKIN_ID === "dingtalk") {
+    stripFilters = [...stripFilters];
+    const likedIndex = stripFilters.findIndex((f) => f.key === "liked");
+    stripFilters.splice(likedIndex + 1, 0, { key: "progress", label: "会员进度", kind: "native-progress" });
+  }
+  const version = SKIN_ID === "dingtalk" ? "5-dingtalk" : "5-all";
   // 误挂进窄条的原生 user-menu 挪回 body
   const trapped = strip?.querySelector(".user-menu");
   if (trapped) document.body.appendChild(trapped);
@@ -322,15 +328,25 @@ export function ensureNotifStrip() {
   strip.setAttribute("aria-label", "通知筛选");
   strip.innerHTML = stripFilters.map((f) => {
     const account = SKIN_ID === "dingtalk" && f.key === "other";
-    return `<button type="button" class="im-strip-item${account ? " im-strip-account" : ""}" ` +
+    const progress = SKIN_ID === "dingtalk" && f.kind === "native-progress";
+    return `<button type="button" class="im-strip-item${account ? " im-strip-account" : ""}${progress ? " im-strip-progress" : ""}" ` +
       (account
         ? `data-strip-account="1" title="账户与更多" aria-haspopup="menu" aria-expanded="false"`
+        : progress
+          ? `data-strip-progress="1" title="会员进度" aria-haspopup="menu" aria-expanded="false"`
         : `data-ntype="${f.key}" title="${f.label}" aria-pressed="false"`) + `>` +
       `${FILTER_ICONS[f.key] || FILTER_ICONS.all}` +
       (f.key === "all" ? `<span class="im-strip-badge" style="display:none"></span>` : "") +
       `</button>`;
   }).join("");
   strip.addEventListener("click", (e) => {
+    const progress = e.target.closest(".im-strip-progress[data-strip-progress]");
+    if (progress) {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleDingtalkProfileMenu("progress");
+      return;
+    }
     const account = e.target.closest(".im-strip-account[data-strip-account]");
     if (account) {
       e.preventDefault();

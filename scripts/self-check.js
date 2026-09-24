@@ -113,7 +113,7 @@ for (const marker of ["function beginResize(", "im-chat-resize-handle", "--im-ch
   }
 }
 
-for (const marker of ["function toggleNotifStrip(", "im-notif-strip-expanded", "4-dingtalk"]) {
+for (const marker of ["function toggleNotifStrip(", "im-notif-strip-expanded", "5-dingtalk"]) {
   if (!output.includes(marker)) {
     console.error(`missing collapsible notification-strip marker: ${marker}`);
     ok = false;
@@ -144,6 +144,18 @@ for (const marker of ["function bindLotteryParticipantScroll(", "participantScro
 for (const marker of ["function bookmarkApiPath(", "user-menu-bookmarks", "bookmarkable_url"]) {
   if (!output.includes(marker)) {
     console.error(`missing native bookmark-source marker: ${marker}`);
+    ok = false;
+  }
+}
+
+for (const marker of [
+  "im-strip-progress",
+  "会员进度",
+  "function nativeProfileMenuTab(",
+  "stripFilters.splice(likedIndex + 1, 0"
+]) {
+  if (!output.includes(marker)) {
+    console.error(`missing native membership-progress marker: ${marker}`);
     ok = false;
   }
 }
