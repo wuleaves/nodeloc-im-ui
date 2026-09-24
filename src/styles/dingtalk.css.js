@@ -16,6 +16,7 @@ export const CSS_DD = String.raw`
       --im-text-3: #8A8F99;
       --im-text-4: #B0B4BE;
       --im-bg: #FFFFFF;
+      --im-bg-soft: #F7F8FA;
       --im-chat-bg: #F5F7FB;
       --im-hover: #ECF0F7;
       --im-active: #E4EAF5;
@@ -221,7 +222,7 @@ export const CSS_DD = String.raw`
       font-size: 9px; line-height: 14px; text-align: center;
       border-radius: 7px; font-weight: 500;
     }
-    /* 左上头像：复用 NodeLoc 原生账户菜单，只改变为钉钉式浮层。 */
+    /* 通知窄栏「账户与更多」：复用 NodeLoc 原生账户菜单，只改变为钉钉式浮层。 */
     .__ROOT_CLASS__ .user-menu.im-user-menu-float,
     .__ROOT_CLASS__ .user-menu.revamped.menu-panel.im-user-menu-float,
     .__ROOT_CLASS__ .user-menu.menu-panel.im-user-menu-float {
@@ -235,8 +236,8 @@ export const CSS_DD = String.raw`
     .__ROOT_CLASS__.im-notif-open .user-menu.menu-panel.im-user-menu-float {
       display: block !important;
       position: fixed !important;
-      left: 8px !important;
-      top: calc(var(--im-header-h) + 4px) !important;
+      left: calc(var(--im-nav) + var(--im-strip) + 8px) !important;
+      top: calc(var(--im-header-h) + 8px) !important;
       right: auto !important;
       bottom: auto !important;
       width: 420px !important;
@@ -311,6 +312,10 @@ export const CSS_DD = String.raw`
     .__ROOT_CLASS__.im-profile-open .user-menu.im-dingtalk-profile-menu svg,
     .__ROOT_CLASS__.im-profile-open .user-menu.im-dingtalk-profile-menu .d-icon {
       width: 18px !important; height: 18px !important; flex: 0 0 18px !important;
+    }
+    .im-strip-account.is-profile-open {
+      background: var(--im-accent-soft) !important;
+      color: var(--im-accent) !important;
     }
 
     /* ---------- 最左：钉钉文字导航栏（浅色渐变；仅「更多」可点，展开原生侧栏） ---------- */
@@ -1228,6 +1233,7 @@ export const CSS_DD = String.raw`
       --im-text-3: #8A8F99;
       --im-text-4: #6B707A;
       --im-bg: #14161B;
+      --im-bg-soft: #191C22;
       --im-chat-bg: #0F1115;
       --im-hover: #22262E;
       --im-active: #2A3140;

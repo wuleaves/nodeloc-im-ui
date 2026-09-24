@@ -8,7 +8,7 @@ import { escapeHtml } from "../utils/html.js";
 import { getCurrentUsername } from "../bridge/user.js";
 import { formatTime, stripTags } from "./shared/time.js";
 import { avatarColor, avatarLetter, fullAvatarUrl } from "./shared/avatars.js";
-import { refreshRail, getUnreadNotificationCount } from "./rail.js";
+import { refreshRail, getUnreadNotificationCount, toggleDingtalkProfileMenu } from "./rail.js";
 import { activeRailKey, setActiveRailKey } from "./list-sources.js";
 import { SKIN_ID } from "../config/skins.js";
 
@@ -218,7 +218,7 @@ function setBodyStatus(panel, text) {
 export function renderNotifications(panel) {
   const chips = panel.querySelector(".im-list-chips");
   // 窄条皮肤：类型筛选在 .im-strip，顶部不放 chips（空容器由 CSS 隐藏）
-  if (document.querySelector('.im-strip[data-ver^="3-"]')) {
+  if (document.querySelector('.im-strip[data-ver^="4-"]')) {
     chips.dataset.src = "notifications-v3";
     chips.innerHTML = "";
   } else if (chips.dataset.src !== "notifications-v3") {
@@ -306,7 +306,7 @@ export function ensureNotifStrip() {
   const stripFilters = SKIN_ID === "dingtalk"
     ? FILTERS.filter((f) => DINGTALK_STRIP_KEYS.has(f.key))
     : FILTERS;
-  const version = SKIN_ID === "dingtalk" ? "3-dingtalk" : "3-all";
+  const version = SKIN_ID === "dingtalk" ? "4-dingtalk" : "4-all";
   // 误挂进窄条的原生 user-menu 挪回 body
   const trapped = strip?.querySelector(".user-menu");
   if (trapped) document.body.appendChild(trapped);
@@ -320,13 +320,24 @@ export function ensureNotifStrip() {
   strip.className = "im-strip";
   strip.dataset.ver = version;
   strip.setAttribute("aria-label", "通知筛选");
-  strip.innerHTML = stripFilters.map((f) =>
-    `<button type="button" class="im-strip-item" data-ntype="${f.key}" title="${f.label}" aria-pressed="false">` +
-    `${FILTER_ICONS[f.key] || FILTER_ICONS.all}` +
-    (f.key === "all" ? `<span class="im-strip-badge" style="display:none"></span>` : "") +
-    `</button>`
-  ).join("");
+  strip.innerHTML = stripFilters.map((f) => {
+    const account = SKIN_ID === "dingtalk" && f.key === "other";
+    return `<button type="button" class="im-strip-item${account ? " im-strip-account" : ""}" ` +
+      (account
+        ? `data-strip-account="1" title="账户与更多" aria-haspopup="menu" aria-expanded="false"`
+        : `data-ntype="${f.key}" title="${f.label}" aria-pressed="false"`) + `>` +
+      `${FILTER_ICONS[f.key] || FILTER_ICONS.all}` +
+      (f.key === "all" ? `<span class="im-strip-badge" style="display:none"></span>` : "") +
+      `</button>`;
+  }).join("");
   strip.addEventListener("click", (e) => {
+    const account = e.target.closest(".im-strip-account[data-strip-account]");
+    if (account) {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleDingtalkProfileMenu();
+      return;
+    }
     const btn = e.target.closest(".im-strip-item[data-ntype]");
     if (!btn) return;
     e.preventDefault();

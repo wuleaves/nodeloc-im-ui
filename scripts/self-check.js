@@ -113,7 +113,7 @@ for (const marker of ["function beginResize(", "im-chat-resize-handle", "--im-ch
   }
 }
 
-for (const marker of ["function toggleNotifStrip(", "im-notif-strip-expanded", "3-dingtalk"]) {
+for (const marker of ["function toggleNotifStrip(", "im-notif-strip-expanded", "4-dingtalk"]) {
   if (!output.includes(marker)) {
     console.error(`missing collapsible notification-strip marker: ${marker}`);
     ok = false;
@@ -123,6 +123,13 @@ for (const marker of ["function toggleNotifStrip(", "im-notif-strip-expanded", "
 for (const marker of ["查看原生个人总结", "setViewMode(\"native\")", "/summary`)"]) {
   if (!output.includes(marker)) {
     console.error(`missing native avatar-summary marker: ${marker}`);
+    ok = false;
+  }
+}
+
+for (const marker of ["im-strip-account", "账户与更多", "data-strip-account"]) {
+  if (!output.includes(marker)) {
+    console.error(`missing native account-menu launcher marker: ${marker}`);
     ok = false;
   }
 }

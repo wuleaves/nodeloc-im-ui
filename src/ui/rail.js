@@ -505,6 +505,10 @@ function closeDingtalkProfileMenu({ closeNative = true } = {}) {
     el.classList.remove("is-profile-open");
     el.setAttribute("aria-expanded", "false");
   });
+  document.querySelectorAll(".im-strip-account.is-profile-open").forEach((el) => {
+    el.classList.remove("is-profile-open", "active");
+    el.setAttribute("aria-expanded", "false");
+  });
   if (!closeNative || !menu) return;
   const toggle = nativeUserToggle();
   if (toggle?.getAttribute("aria-expanded") === "true") {
@@ -522,6 +526,18 @@ function decorateDingtalkProfileMenu(menu) {
     activeMenu.classList.add("im-user-menu-float", DINGTALK_PROFILE_CLASS);
     if (activeMenu.dataset.imProfileCleanupBound !== "1") {
       activeMenu.dataset.imProfileCleanupBound = "1";
+      // 原生账户栏中的资料页入口保持原生页面体验；状态按钮和右侧原生 tab 不拦截。
+      activeMenu.addEventListener("click", (event) => {
+        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        const link = event.target.closest("a[href]");
+        if (!link || link.closest(".menu-tabs-container")) return;
+        const href = link.getAttribute("href") || "";
+        if (!/^\/(?:u\/[^/]+|my)(?:\/|$)/.test(href)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        setViewMode("native");
+        location.assign(href);
+      }, true);
       activeMenu.addEventListener("click", () => {
         setTimeout(() => {
           if (!activeMenu.isConnected || !document.querySelector(`.user-menu.${DINGTALK_PROFILE_CLASS}`)) {
@@ -535,6 +551,10 @@ function decorateDingtalkProfileMenu(menu) {
       el.classList.add("is-profile-open");
       el.setAttribute("aria-expanded", "true");
     });
+    document.querySelectorAll(".im-strip-account").forEach((el) => {
+      el.classList.add("is-profile-open", "active");
+      el.setAttribute("aria-expanded", "true");
+    });
   });
 }
 
@@ -544,7 +564,7 @@ function waitForDingtalkProfileMenu(attempt = 0) {
   if (attempt < 12) setTimeout(() => waitForDingtalkProfileMenu(attempt + 1), 40);
 }
 
-function toggleDingtalkProfileMenu() {
+export function toggleDingtalkProfileMenu() {
   if (document.documentElement.classList.contains("im-profile-open")) {
     closeDingtalkProfileMenu();
     return;
@@ -561,7 +581,7 @@ function toggleDingtalkProfileMenu() {
     profileMenuOutsideBound = true;
     document.addEventListener("click", (event) => {
       if (!document.documentElement.classList.contains("im-profile-open")) return;
-      if (event.target.closest(`.${DINGTALK_PROFILE_CLASS}, .im-rail-avatar`)) return;
+      if (event.target.closest(`.${DINGTALK_PROFILE_CLASS}, .im-rail-avatar, .im-strip-account`)) return;
       closeDingtalkProfileMenu();
     });
     document.addEventListener("keydown", (event) => {
