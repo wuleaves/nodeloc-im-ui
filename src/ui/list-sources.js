@@ -6,6 +6,7 @@ import { renderNotifications, onNotificationsChip, notificationsScroll, ensureMa
 import { registerExtraSources } from "./topic-lists.js";
 import { navigateInApp, isTopicPath, listApiForPath } from "../bridge/router.js";
 import { listState } from "../state/list-state.js";
+import { syncNotifStripContext } from "../state/notif-strip-state.js";
 
 const sources = new Map();
 const scrollCache = new Map(); // railKey -> body scrollTop
@@ -48,6 +49,7 @@ export function setActiveRailKey(key, opts = {}) {
 
 /** 按当前 railKey 渲染内容区；路由变化时重复调用安全（同 key 不触发 onHide） */
 export function renderActiveSource() {
+  syncNotifStripContext(activeKey === "notifications");
   const panel = document.querySelector(".im-list-panel");
   if (!panel) return;
   bindSourceControls(panel);

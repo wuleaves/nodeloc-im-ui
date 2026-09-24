@@ -10,6 +10,7 @@ import { formatTime, stripTags } from "./shared/time.js";
 import { avatarColor, avatarLetter, fullAvatarUrl } from "./shared/avatars.js";
 import { refreshRail, getUnreadNotificationCount } from "./rail.js";
 import { activeRailKey, setActiveRailKey } from "./list-sources.js";
+import { SKIN_ID } from "../config/skins.js";
 
 // Discourse core notification_type 数字（实测锚定：2 回复 5 赞 12 徽章 25 回应 801 Boost）
 const TYPE_GLYPHS = {
@@ -37,6 +38,9 @@ export const FILTERS = [
     types: "edited,invited_to_private_message,invitee_accepted,moved_post,linked,granted_badge,invited_to_topic,custom,watching_first_post,topic_reminder,post_approved,code_review_commit_approved,membership_request_accepted,membership_request_consolidated,votes_released,event_reminder,event_invitation,chat_group_mention,question_answer_user_commented,watching_category_or_tag,new_features,admin_problems,linked_consolidated,upcoming_change_available,upcoming_change_automatically_promoted,boost,suggested_edit_created,suggested_edit_accepted,following,following_created_topic,following_replied,circles_activity,resenha_invitation"
   }
 ];
+
+// 钉钉主侧栏已有私信、书签、聊天的独立入口，通知分类窄栏只保留通知本身的类别。
+const DINGTALK_STRIP_KEYS = new Set(["all", "replied", "liked", "assigned", "other"]);
 
 const MARK_ALL_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M3 13l4 4L15 9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 13l4 4 8-8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.45"/></svg>`;
 
@@ -214,11 +218,11 @@ function setBodyStatus(panel, text) {
 export function renderNotifications(panel) {
   const chips = panel.querySelector(".im-list-chips");
   // 窄条皮肤：类型筛选在 .im-strip，顶部不放 chips（空容器由 CSS 隐藏）
-  if (document.querySelector('.im-strip[data-ver="2"]')) {
-    chips.dataset.src = "notifications-v2";
+  if (document.querySelector('.im-strip[data-ver^="3-"]')) {
+    chips.dataset.src = "notifications-v3";
     chips.innerHTML = "";
-  } else if (chips.dataset.src !== "notifications-v2") {
-    chips.dataset.src = "notifications-v2";
+  } else if (chips.dataset.src !== "notifications-v3") {
+    chips.dataset.src = "notifications-v3";
     chips.innerHTML = FILTERS.map(
       (f) =>
         `<button type="button" class="im-chip im-ntype-chip" data-ntype="${f.key}">${f.label}<span class="n"></span></button>`
@@ -296,23 +300,27 @@ export function onNotificationsChip(chip) {
 
 /* ---------- 通知筛选窄条（飞书皮肤 .im-strip，替代原装饰假条） ---------- */
 
-/** 构建筛选窄条；旧装饰条（项上无 data-ntype）重建。仅窄条皮肤（飞书）由分派层调用 */
+/** 构建筛选窄条；旧装饰条（项上无 data-ntype）重建。钉钉/飞书由分派层调用。 */
 export function ensureNotifStrip() {
   let strip = document.querySelector(".im-strip");
+  const stripFilters = SKIN_ID === "dingtalk"
+    ? FILTERS.filter((f) => DINGTALK_STRIP_KEYS.has(f.key))
+    : FILTERS;
+  const version = SKIN_ID === "dingtalk" ? "3-dingtalk" : "3-all";
   // 误挂进窄条的原生 user-menu 挪回 body
   const trapped = strip?.querySelector(".user-menu");
   if (trapped) document.body.appendChild(trapped);
   // data-ver 换代时重建（FILTERS 语义升级后旧条残留旧按钮）
-  if (strip && strip.dataset.ver === "2" && strip.querySelector(".im-strip-item[data-ntype]")) {
+  if (strip && strip.dataset.ver === version && strip.querySelector(".im-strip-item[data-ntype]")) {
     syncNotifStrip();
     return strip;
   }
   strip?.remove();
   strip = document.createElement("nav");
   strip.className = "im-strip";
-  strip.dataset.ver = "2";
+  strip.dataset.ver = version;
   strip.setAttribute("aria-label", "通知筛选");
-  strip.innerHTML = FILTERS.map((f) =>
+  strip.innerHTML = stripFilters.map((f) =>
     `<button type="button" class="im-strip-item" data-ntype="${f.key}" title="${f.label}" aria-pressed="false">` +
     `${FILTER_ICONS[f.key] || FILTER_ICONS.all}` +
     (f.key === "all" ? `<span class="im-strip-badge" style="display:none"></span>` : "") +
@@ -331,6 +339,12 @@ export function ensureNotifStrip() {
 
 /** 窄条高亮与「全部」未读角标同步（切列 / 筛选 / 角标刷新共用） */
 export function syncNotifStrip() {
+  const railBtn = document.querySelector('.im-rail-item[data-rail-key="notifications"]');
+  if (railBtn) {
+    const expanded = document.documentElement.classList.contains("im-notif-strip-expanded");
+    railBtn.setAttribute("aria-expanded", expanded ? "true" : "false");
+    railBtn.title = expanded ? "收起通知分类" : "展开通知分类";
+  }
   const strip = document.querySelector(".im-strip");
   if (!strip) return;
   const active = activeRailKey() === "notifications" ? state.filter : null;

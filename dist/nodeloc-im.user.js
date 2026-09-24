@@ -2,7 +2,7 @@
 // @name         NodeLoc · IM 外观（钉钉 / 飞书 / 企业微信）
 // @namespace    https://www.nodeloc.com/
 // @author       czm15053, NodeLoc adaptation
-// @version      0.7.1
+// @version      0.7.2
 // @description  NodeLoc 三栏 IM 外观：节点/主题列表、帖子流、回复、搜索、用户与通知，支持三套皮肤和明暗主题。
 // @match        https://www.nodeloc.com/*
 // @noframes
@@ -171,6 +171,7 @@
   const RAIL_COLLAPSE_KEY = "nodeloc-im-rail-collapse";
   const LIST_W_KEY = "nodeloc-im-list-width";
   const LIST_NAV_KEY = "nodeloc-im-list-nav";
+  const NOTIF_STRIP_OPEN_KEY = "nodeloc-im-notif-strip-open";
   const AI_NAME_KEY = "nodeloc-im-ai-name";
   const AI_AVATAR_KEY = "nodeloc-im-ai-avatar";
   const AI_DEFAULT_NAME = "豆包";
@@ -207,7 +208,8 @@
       --im-strip-bg: transparent;
       --im-nav: __RAIL_WIDTH__px;
       --im-nav2w: 0px;
-      --im-strip: __STRIP_WIDTH__px;
+      --im-strip-open-width: __STRIP_WIDTH__px;
+      --im-strip: 0px;
       --im-list: __LIST_WIDTH__px;
       --im-header-h: __TITLEBAR_HEIGHT__px;
       --im-font: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Inter, -apple-system, BlinkMacSystemFont, sans-serif;
@@ -221,6 +223,9 @@
       --header_background: #FFFFFF;
       --header_primary: var(--im-text);
       --d-hover: var(--im-hover);
+    }
+    .__ROOT_CLASS__.im-notif-strip-active.im-notif-strip-expanded {
+      --im-strip: var(--im-strip-open-width);
     }
 
     /* 整站写死光明：覆盖系统/站点暗色偏好 */
@@ -363,12 +368,13 @@
       width: var(--im-strip);
       background: var(--im-strip-bg);
       border-right: 1px solid var(--im-border);
-      display: flex; flex-direction: column; align-items: center;
+      display: none; flex-direction: column; align-items: center;
       gap: 6px; padding: 14px 0;
       z-index: 250;
       font-family: var(--im-font);
       transition: left 0.18s ease;
     }
+    .__ROOT_CLASS__.im-notif-strip-active.im-notif-strip-expanded .im-strip { display: flex; }
     .im-strip-item {
       width: 32px; height: 32px; border-radius: 8px;
       border: 0; padding: 0; background: transparent;
@@ -624,6 +630,15 @@
     .im-rail-item:hover { background: rgba(255,255,255,.65); }
     .im-rail-item.active { color: var(--im-blue); background: #FFFFFF; box-shadow: 0 1px 4px rgba(31,35,41,.06); }
     .im-rail-item.active svg { color: var(--im-blue); }
+    .im-rail-notif-chevron {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 18px; height: 18px; margin-left: auto;
+      color: var(--im-text-2); transform: rotate(180deg);
+      transition: transform .16s ease;
+    }
+    .im-rail-notif-chevron svg { width: 15px; height: 15px; color: inherit; }
+    .__ROOT_CLASS__.im-notif-strip-expanded .im-rail-notif-chevron { transform: rotate(0deg); }
+    .im-rail-item[data-rail-key="notifications"] .im-rail-badge { right: 30px; }
     .im-rail-bottom { width: 100%; flex-shrink: 0; padding: 4px 8px 0; }
     .im-rail-more.is-on { color: var(--im-blue); background: #FFFFFF; box-shadow: 0 1px 4px rgba(31,35,41,.06); }
     .im-rail-more.is-on svg { color: var(--im-blue); }
@@ -12202,6 +12217,7 @@ ${data.raw}
       types: "edited,invited_to_private_message,invitee_accepted,moved_post,linked,granted_badge,invited_to_topic,custom,watching_first_post,topic_reminder,post_approved,code_review_commit_approved,membership_request_accepted,membership_request_consolidated,votes_released,event_reminder,event_invitation,chat_group_mention,question_answer_user_commented,watching_category_or_tag,new_features,admin_problems,linked_consolidated,upcoming_change_available,upcoming_change_automatically_promoted,boost,suggested_edit_created,suggested_edit_accepted,following,following_created_topic,following_replied,circles_activity,resenha_invitation"
     }
   ];
+  const DINGTALK_STRIP_KEYS = /* @__PURE__ */ new Set(["all", "replied", "liked", "assigned", "other"]);
   const MARK_ALL_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M3 13l4 4L15 9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 13l4 4 8-8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.45"/></svg>`;
   const OUTLINE_ICON = (body) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
   const FILTER_ICONS = {
@@ -12356,11 +12372,11 @@ ${data.raw}
   }
   function renderNotifications(panel) {
     const chips = panel.querySelector(".im-list-chips");
-    if (document.querySelector('.im-strip[data-ver="2"]')) {
-      chips.dataset.src = "notifications-v2";
+    if (document.querySelector('.im-strip[data-ver^="3-"]')) {
+      chips.dataset.src = "notifications-v3";
       chips.innerHTML = "";
-    } else if (chips.dataset.src !== "notifications-v2") {
-      chips.dataset.src = "notifications-v2";
+    } else if (chips.dataset.src !== "notifications-v3") {
+      chips.dataset.src = "notifications-v3";
       chips.innerHTML = FILTERS.map(
         (f) => `<button type="button" class="im-chip im-ntype-chip" data-ntype="${f.key}">${f.label}<span class="n"></span></button>`
       ).join("");
@@ -12425,18 +12441,20 @@ ${data.raw}
   }
   function ensureNotifStrip() {
     let strip = document.querySelector(".im-strip");
+    const stripFilters = SKIN_ID === "dingtalk" ? FILTERS.filter((f) => DINGTALK_STRIP_KEYS.has(f.key)) : FILTERS;
+    const version = SKIN_ID === "dingtalk" ? "3-dingtalk" : "3-all";
     const trapped = strip == null ? void 0 : strip.querySelector(".user-menu");
     if (trapped) document.body.appendChild(trapped);
-    if (strip && strip.dataset.ver === "2" && strip.querySelector(".im-strip-item[data-ntype]")) {
+    if (strip && strip.dataset.ver === version && strip.querySelector(".im-strip-item[data-ntype]")) {
       syncNotifStrip();
       return strip;
     }
     strip == null ? void 0 : strip.remove();
     strip = document.createElement("nav");
     strip.className = "im-strip";
-    strip.dataset.ver = "2";
+    strip.dataset.ver = version;
     strip.setAttribute("aria-label", "通知筛选");
-    strip.innerHTML = FILTERS.map(
+    strip.innerHTML = stripFilters.map(
       (f) => `<button type="button" class="im-strip-item" data-ntype="${f.key}" title="${f.label}" aria-pressed="false">${FILTER_ICONS[f.key] || FILTER_ICONS.all}` + (f.key === "all" ? `<span class="im-strip-badge" style="display:none"></span>` : "") + `</button>`
     ).join("");
     strip.addEventListener("click", (e) => {
@@ -12450,6 +12468,12 @@ ${data.raw}
     return strip;
   }
   function syncNotifStrip() {
+    const railBtn = document.querySelector('.im-rail-item[data-rail-key="notifications"]');
+    if (railBtn) {
+      const expanded = document.documentElement.classList.contains("im-notif-strip-expanded");
+      railBtn.setAttribute("aria-expanded", expanded ? "true" : "false");
+      railBtn.title = expanded ? "收起通知分类" : "展开通知分类";
+    }
     const strip = document.querySelector(".im-strip");
     if (!strip) return;
     const active = activeRailKey() === "notifications" ? state$2.filter : null;
@@ -12713,6 +12737,34 @@ ${data.raw}
       registerSource(item.key, makePlaceholderSource(item));
     }
   }
+  function isNotifStripExpanded() {
+    try {
+      const saved = localStorage.getItem(NOTIF_STRIP_OPEN_KEY);
+      return saved == null ? true : saved === "1";
+    } catch {
+      return true;
+    }
+  }
+  function applyNotifStripContext(active, expanded = isNotifStripExpanded()) {
+    const root2 = document.documentElement;
+    const show = !!active && !!expanded;
+    const changed = root2.classList.contains("im-notif-strip-active") !== !!active || root2.classList.contains("im-notif-strip-expanded") !== show;
+    root2.classList.toggle("im-notif-strip-active", !!active);
+    root2.classList.toggle("im-notif-strip-expanded", show);
+    if (changed) window.dispatchEvent(new Event("im-layout-change"));
+  }
+  function syncNotifStripContext(active) {
+    applyNotifStripContext(active);
+  }
+  function toggleNotifStrip() {
+    const next = !document.documentElement.classList.contains("im-notif-strip-expanded");
+    try {
+      localStorage.setItem(NOTIF_STRIP_OPEN_KEY, next ? "1" : "0");
+    } catch {
+    }
+    applyNotifStripContext(true, next);
+    return next;
+  }
   const sources = /* @__PURE__ */ new Map();
   const scrollCache = /* @__PURE__ */ new Map();
   let activeKey = "chat";
@@ -12744,6 +12796,7 @@ ${data.raw}
   }
   function renderActiveSource() {
     var _a2, _b2, _c, _d;
+    syncNotifStripContext(activeKey === "notifications");
     const panel = document.querySelector(".im-list-panel");
     if (!panel) return;
     bindSourceControls(panel);
@@ -13356,7 +13409,7 @@ ${item.label}`;
     items.className = "im-rail-items";
     const solid = SKIN_ID === "wecom";
     const rIcon = (k) => solid && ICONS[`${k}Fill`] ? ICONS[`${k}Fill`] : ICONS[k];
-    items.innerHTML = `<button type="button" class="im-rail-item active" data-rail-key="chat">${rIcon("msg")}<span>消息</span><span class="im-rail-badge" style="display:none"></span></button><button type="button" class="im-rail-item" data-rail-key="notifications">${rIcon("bell")}<span>通知</span><span class="im-rail-badge" style="display:none"></span></button><button type="button" class="im-rail-item" data-rail-key="messages">${rIcon("mail")}<span>私信</span><span class="im-rail-badge" style="display:none"></span></button><button type="button" class="im-rail-item" data-rail-key="bookmarks">${rIcon("bookmark")}<span>书签</span><span class="im-rail-badge" style="display:none"></span></button><button type="button" class="im-rail-item" data-rail-key="chats">${rIcon("users")}<span>聊天</span><span class="im-rail-badge" style="display:none"></span></button>` + RAIL_DECO_ITEMS.filter((item) => item.key !== "more").map(
+    items.innerHTML = `<button type="button" class="im-rail-item active" data-rail-key="chat">${rIcon("msg")}<span>消息</span><span class="im-rail-badge" style="display:none"></span></button><button type="button" class="im-rail-item" data-rail-key="notifications">${rIcon("bell")}<span>通知</span><span class="im-rail-badge" style="display:none"></span><span class="im-rail-notif-chevron" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none"><path d="m6 3.5 4.5 4.5L6 12.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button><button type="button" class="im-rail-item" data-rail-key="messages">${rIcon("mail")}<span>私信</span><span class="im-rail-badge" style="display:none"></span></button><button type="button" class="im-rail-item" data-rail-key="bookmarks">${rIcon("bookmark")}<span>书签</span><span class="im-rail-badge" style="display:none"></span></button><button type="button" class="im-rail-item" data-rail-key="chats">${rIcon("users")}<span>聊天</span><span class="im-rail-badge" style="display:none"></span></button>` + RAIL_DECO_ITEMS.filter((item) => item.key !== "more").map(
       (item) => `<button type="button" class="im-rail-item" data-rail-key="${item.key}">${rIcon(item.icon)}<span>${item.label}</span>${item.dot ? '<i class="im-rail-dot"></i>' : ""}</button>`
     ).join("");
     rail.appendChild(items);
@@ -13377,11 +13430,18 @@ ${item.label}`;
         return;
       }
       if (SKIN_ID === "dingtalk" && !isDingtalkChatWindowed()) closeDingtalkChatHub();
+      const panel = document.querySelector(".im-list-panel");
+      if (SKIN_ID === "dingtalk" && key === "notifications" && activeRailKey() === "notifications" && (panel == null ? void 0 : panel.dataset.src) === "rail" && panel.dataset.railKey === "notifications") {
+        const expanded = toggleNotifStrip();
+        btn.setAttribute("aria-expanded", expanded ? "true" : "false");
+        btn.title = expanded ? "收起通知分类" : "展开通知分类";
+        return;
+      }
       if (key === "chats") {
         navigateInApp("/chat/channels");
         return;
       }
-      if (!document.querySelector(".im-list-panel")) {
+      if (!panel) {
         navigateInApp("/");
         return;
       }
@@ -17780,7 +17840,7 @@ ${item.label}`;
       }
       if (window.__nodelocImBootstrapped) return;
       window.__nodelocImBootstrapped = true;
-      console.info(`[nodeloc-im] v${"0.7.1"} loaded, skin=${SKIN_ID}`);
+      console.info(`[nodeloc-im] v${"0.7.2"} loaded, skin=${SKIN_ID}`);
       if (cfBlocked() || nativeNotFound()) ;
       else {
         injectStyle();

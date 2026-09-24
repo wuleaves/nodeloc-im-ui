@@ -22,6 +22,7 @@ export const RAIL_W_KEY = "nodeloc-im-rail-width";
 export const RAIL_COLLAPSE_KEY = "nodeloc-im-rail-collapse"; // "1" = 侧栏收起为窄条大图标（wecom）
 export const LIST_W_KEY = "nodeloc-im-list-width";
 export const LIST_NAV_KEY = "nodeloc-im-list-nav"; // "1" = 展开中栏筛选
+export const NOTIF_STRIP_OPEN_KEY = "nodeloc-im-notif-strip-open"; // "1" = 展开通知分类窄栏
 
 export const AI_NAME_KEY = "nodeloc-im-ai-name";
 export const AI_AVATAR_KEY = "nodeloc-im-ai-avatar"; // data URL / http(s) URL，空 = 官方豆包

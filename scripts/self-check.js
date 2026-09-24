@@ -25,6 +25,7 @@ const checks = [
   ["function highlightTitleText(", 1],
   ["function openHighlightConfigDialog(", 1],
   ["const LIST_NAV_KEY", 1],
+  ["const NOTIF_STRIP_OPEN_KEY", 1],
   ["const MASK_AVATAR_KEY", 1],
   ["const MASK_TITLE_KEY", 1],
   ["const HIDE_CAT_TAGS_KEY", 1],
@@ -108,6 +109,13 @@ for (const marker of ["function toggleChatWindow(", "im-chat-hub-windowed", "小
 for (const marker of ["function beginResize(", "im-chat-resize-handle", "--im-chat-window-w"]) {
   if (!output.includes(marker)) {
     console.error(`missing detached Chat window marker: ${marker}`);
+    ok = false;
+  }
+}
+
+for (const marker of ["function toggleNotifStrip(", "im-notif-strip-expanded", "3-dingtalk"]) {
+  if (!output.includes(marker)) {
+    console.error(`missing collapsible notification-strip marker: ${marker}`);
     ok = false;
   }
 }

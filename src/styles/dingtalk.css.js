@@ -28,7 +28,8 @@ export const CSS_DD = String.raw`
       --im-strip-bg: transparent;
       --im-nav: __RAIL_WIDTH__px;
       --im-nav2w: 0px;
-      --im-strip: __STRIP_WIDTH__px;
+      --im-strip-open-width: __STRIP_WIDTH__px;
+      --im-strip: 0px;
       --im-list: __LIST_WIDTH__px;
       --im-header-h: __TITLEBAR_HEIGHT__px;
       --im-font: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Inter, -apple-system, BlinkMacSystemFont, sans-serif;
@@ -42,6 +43,9 @@ export const CSS_DD = String.raw`
       --header_background: #FFFFFF;
       --header_primary: var(--im-text);
       --d-hover: var(--im-hover);
+    }
+    .__ROOT_CLASS__.im-notif-strip-active.im-notif-strip-expanded {
+      --im-strip: var(--im-strip-open-width);
     }
 
     /* 整站写死光明：覆盖系统/站点暗色偏好 */
@@ -184,12 +188,13 @@ export const CSS_DD = String.raw`
       width: var(--im-strip);
       background: var(--im-strip-bg);
       border-right: 1px solid var(--im-border);
-      display: flex; flex-direction: column; align-items: center;
+      display: none; flex-direction: column; align-items: center;
       gap: 6px; padding: 14px 0;
       z-index: 250;
       font-family: var(--im-font);
       transition: left 0.18s ease;
     }
+    .__ROOT_CLASS__.im-notif-strip-active.im-notif-strip-expanded .im-strip { display: flex; }
     .im-strip-item {
       width: 32px; height: 32px; border-radius: 8px;
       border: 0; padding: 0; background: transparent;
@@ -445,6 +450,15 @@ export const CSS_DD = String.raw`
     .im-rail-item:hover { background: rgba(255,255,255,.65); }
     .im-rail-item.active { color: var(--im-blue); background: #FFFFFF; box-shadow: 0 1px 4px rgba(31,35,41,.06); }
     .im-rail-item.active svg { color: var(--im-blue); }
+    .im-rail-notif-chevron {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 18px; height: 18px; margin-left: auto;
+      color: var(--im-text-2); transform: rotate(180deg);
+      transition: transform .16s ease;
+    }
+    .im-rail-notif-chevron svg { width: 15px; height: 15px; color: inherit; }
+    .__ROOT_CLASS__.im-notif-strip-expanded .im-rail-notif-chevron { transform: rotate(0deg); }
+    .im-rail-item[data-rail-key="notifications"] .im-rail-badge { right: 30px; }
     .im-rail-bottom { width: 100%; flex-shrink: 0; padding: 4px 8px 0; }
     .im-rail-more.is-on { color: var(--im-blue); background: #FFFFFF; box-shadow: 0 1px 4px rgba(31,35,41,.06); }
     .im-rail-more.is-on svg { color: var(--im-blue); }

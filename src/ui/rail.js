@@ -12,7 +12,8 @@ import { getCurrentUsername } from "../bridge/user.js";
 import { listState } from "../state/list-state.js";
 import { getViewMode } from "../state/view-state.js";
 import { avatarColor, avatarLetter } from "./shared/avatars.js";
-import { hasSource, setActiveRailKey } from "./list-sources.js";
+import { activeRailKey, hasSource, setActiveRailKey } from "./list-sources.js";
+import { toggleNotifStrip } from "../state/notif-strip-state.js";
 import { closeDingtalkWorkbench, openDingtalkWorkbench } from "../features/dingtalk-workbench.js";
 import { closeDingtalkChatHub, isDingtalkChatWindowed, openDingtalkChatHub } from "../features/dingtalk-chat-hub.js";
 import { navigateInApp } from "../bridge/router.js";
@@ -204,7 +205,8 @@ export function ensureRailDingtalk() {
     `<button type="button" class="im-rail-item active" data-rail-key="chat">${rIcon("msg")}<span>消息</span>` +
     `<span class="im-rail-badge" style="display:none"></span></button>` +
     `<button type="button" class="im-rail-item" data-rail-key="notifications">${rIcon("bell")}<span>通知</span>` +
-    `<span class="im-rail-badge" style="display:none"></span></button>` +
+    `<span class="im-rail-badge" style="display:none"></span>` +
+    `<span class="im-rail-notif-chevron" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none"><path d="m6 3.5 4.5 4.5L6 12.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>` +
     `<button type="button" class="im-rail-item" data-rail-key="messages">${rIcon("mail")}<span>私信</span>` +
     `<span class="im-rail-badge" style="display:none"></span></button>` +
     `<button type="button" class="im-rail-item" data-rail-key="bookmarks">${rIcon("bookmark")}<span>书签</span>` +
@@ -236,13 +238,24 @@ export function ensureRailDingtalk() {
       return;
     }
     if (SKIN_ID === "dingtalk" && !isDingtalkChatWindowed()) closeDingtalkChatHub();
+    const panel = document.querySelector(".im-list-panel");
+    if (
+      SKIN_ID === "dingtalk" && key === "notifications" &&
+      activeRailKey() === "notifications" && panel?.dataset.src === "rail" &&
+      panel.dataset.railKey === "notifications"
+    ) {
+      const expanded = toggleNotifStrip();
+      btn.setAttribute("aria-expanded", expanded ? "true" : "false");
+      btn.title = expanded ? "收起通知分类" : "展开通知分类";
+      return;
+    }
     if (key === "chats") {
       // 非钉钉皮肤沿用原生 Chat 列表页。
       navigateInApp("/chat/channels");
       return;
     }
     // 非常规路由（原生 /chat* 页等）没有中栏面板：先回首页让面板重建，再切源
-    if (!document.querySelector(".im-list-panel")) {
+    if (!panel) {
       navigateInApp("/");
       return;
     }
