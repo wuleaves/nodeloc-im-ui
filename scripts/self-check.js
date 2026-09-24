@@ -134,6 +134,13 @@ for (const marker of ["im-strip-account", "账户与更多", "data-strip-account
   }
 }
 
+for (const marker of ["function bindLotteryParticipantScroll(", "participantScrollTop", "pendingSync"]) {
+  if (!output.includes(marker)) {
+    console.error(`missing stable lottery-scroll marker: ${marker}`);
+    ok = false;
+  }
+}
+
 if (ok) {
   console.log("self-check passed");
   process.exit(0);

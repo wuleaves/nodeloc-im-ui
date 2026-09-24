@@ -2,7 +2,7 @@
 // @name         NodeLoc · IM 外观（钉钉 / 飞书 / 企业微信）
 // @namespace    https://www.nodeloc.com/
 // @author       czm15053, NodeLoc adaptation
-// @version      0.7.4
+// @version      0.7.5
 // @description  NodeLoc 三栏 IM 外观：节点/主题列表、帖子流、回复、搜索、用户与通知，支持三套皮肤和明暗主题。
 // @match        https://www.nodeloc.com/*
 // @noframes
@@ -9578,8 +9578,39 @@ html.im-theme {
     clone.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
     return clone;
   }
-  function syncLotteryClone(card, widget) {
+  function finishLotteryInteraction(card, widget, binding) {
+    binding.interacting = false;
+    if (!binding.pendingSync) return;
+    binding.pendingSync = false;
+    syncLotteryClone(card, widget, binding);
+  }
+  function bindLotteryParticipantScroll(card, widget, clone, binding) {
+    const list = clone.querySelector(".lottery-participants-list");
+    if (!list) return;
+    const restore = Math.max(0, Number(binding.participantScrollTop) || 0);
+    list.scrollTop = restore;
+    requestAnimationFrame(() => {
+      if (list.isConnected) list.scrollTop = restore;
+    });
+    list.addEventListener("scroll", () => {
+      binding.participantScrollTop = list.scrollTop;
+    }, { passive: true });
+    list.addEventListener("pointerdown", () => {
+      binding.interacting = true;
+      const finish = () => {
+        document.removeEventListener("pointerup", finish, true);
+        document.removeEventListener("pointercancel", finish, true);
+        finishLotteryInteraction(card, widget, binding);
+      };
+      document.addEventListener("pointerup", finish, true);
+      document.addEventListener("pointercancel", finish, true);
+    }, { passive: true });
+  }
+  function syncLotteryClone(card, widget, binding = lotteryBindings.get(card)) {
     if (!card.isConnected || !widget.isConnected) return;
+    if (!binding) return;
+    const currentList = card.querySelector(".im-lottery-widget .lottery-participants-list");
+    if (currentList) binding.participantScrollTop = currentList.scrollTop;
     const clone = cloneLotteryWidget(widget);
     clone.addEventListener("click", (event) => {
       const control = event.target.closest("button, [role='button'], a");
@@ -9593,9 +9624,10 @@ html.im-theme {
       nativeControl.click();
     });
     card.replaceChildren(clone);
+    bindLotteryParticipantScroll(card, widget, clone, binding);
   }
   function enhanceLotteryCards(root2) {
-    var _a2, _b2;
+    var _a2, _b2, _c;
     if (!root2) return;
     for (const card of root2.querySelectorAll(".im-lottery-card:not([data-im-lottery-enhanced])")) {
       const postNumber = Number(((_a2 = card.closest(".im-msg")) == null ? void 0 : _a2.dataset.postNumber) || 0);
@@ -9604,20 +9636,33 @@ html.im-theme {
       );
       const widget = nativePost == null ? void 0 : nativePost.querySelector(".lottery-widget");
       if (!widget) continue;
-      (_b2 = lotteryBindings.get(card)) == null ? void 0 : _b2.disconnect();
-      syncLotteryClone(card, widget);
-      const observer = new MutationObserver(() => syncLotteryClone(card, widget));
+      (_c = (_b2 = lotteryBindings.get(card)) == null ? void 0 : _b2.observer) == null ? void 0 : _c.disconnect();
+      const binding = {
+        observer: null,
+        participantScrollTop: 0,
+        interacting: false,
+        pendingSync: false
+      };
+      lotteryBindings.set(card, binding);
+      syncLotteryClone(card, widget, binding);
+      const observer = new MutationObserver(() => {
+        if (binding.interacting) {
+          binding.pendingSync = true;
+          return;
+        }
+        syncLotteryClone(card, widget, binding);
+      });
       observer.observe(widget, { childList: true, subtree: true, attributes: true, characterData: true });
-      lotteryBindings.set(card, observer);
+      binding.observer = observer;
       card.dataset.imLotteryEnhanced = "1";
     }
   }
   function rebindLotteryCards() {
-    var _a2;
+    var _a2, _b2;
     const body = document.querySelector(".im-chat-body");
     if (!body) return;
     for (const card of body.querySelectorAll(".im-lottery-card")) {
-      (_a2 = lotteryBindings.get(card)) == null ? void 0 : _a2.disconnect();
+      (_b2 = (_a2 = lotteryBindings.get(card)) == null ? void 0 : _a2.observer) == null ? void 0 : _b2.disconnect();
       lotteryBindings.delete(card);
       delete card.dataset.imLotteryEnhanced;
     }
@@ -17885,7 +17930,7 @@ ${item.label}`;
       }
       if (window.__nodelocImBootstrapped) return;
       window.__nodelocImBootstrapped = true;
-      console.info(`[nodeloc-im] v${"0.7.4"} loaded, skin=${SKIN_ID}`);
+      console.info(`[nodeloc-im] v${"0.7.5"} loaded, skin=${SKIN_ID}`);
       if (cfBlocked() || nativeNotFound()) ;
       else {
         injectStyle();

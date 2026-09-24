@@ -43,8 +43,42 @@ function cloneLotteryWidget(widget) {
   return clone;
 }
 
-function syncLotteryClone(card, widget) {
+function finishLotteryInteraction(card, widget, binding) {
+  binding.interacting = false;
+  if (!binding.pendingSync) return;
+  binding.pendingSync = false;
+  syncLotteryClone(card, widget, binding);
+}
+
+function bindLotteryParticipantScroll(card, widget, clone, binding) {
+  const list = clone.querySelector(".lottery-participants-list");
+  if (!list) return;
+  const restore = Math.max(0, Number(binding.participantScrollTop) || 0);
+  list.scrollTop = restore;
+  // 克隆刚挂载时布局可能尚未完成，再在下一帧校正一次。
+  requestAnimationFrame(() => {
+    if (list.isConnected) list.scrollTop = restore;
+  });
+  list.addEventListener("scroll", () => {
+    binding.participantScrollTop = list.scrollTop;
+  }, { passive: true });
+  list.addEventListener("pointerdown", () => {
+    binding.interacting = true;
+    const finish = () => {
+      document.removeEventListener("pointerup", finish, true);
+      document.removeEventListener("pointercancel", finish, true);
+      finishLotteryInteraction(card, widget, binding);
+    };
+    document.addEventListener("pointerup", finish, true);
+    document.addEventListener("pointercancel", finish, true);
+  }, { passive: true });
+}
+
+function syncLotteryClone(card, widget, binding = lotteryBindings.get(card)) {
   if (!card.isConnected || !widget.isConnected) return;
+  if (!binding) return;
+  const currentList = card.querySelector(".im-lottery-widget .lottery-participants-list");
+  if (currentList) binding.participantScrollTop = currentList.scrollTop;
   const clone = cloneLotteryWidget(widget);
   clone.addEventListener("click", (event) => {
     const control = event.target.closest("button, [role='button'], a");
@@ -58,6 +92,7 @@ function syncLotteryClone(card, widget) {
     nativeControl.click();
   });
   card.replaceChildren(clone);
+  bindLotteryParticipantScroll(card, widget, clone, binding);
 }
 
 /** 抽奖插件的数据摘要不足以完整还原组件，因此复制原生组件用于展示，但绝不再
@@ -72,11 +107,24 @@ export function enhanceLotteryCards(root) {
     );
     const widget = nativePost?.querySelector(".lottery-widget");
     if (!widget) continue;
-    lotteryBindings.get(card)?.disconnect();
-    syncLotteryClone(card, widget);
-    const observer = new MutationObserver(() => syncLotteryClone(card, widget));
+    lotteryBindings.get(card)?.observer?.disconnect();
+    const binding = {
+      observer: null,
+      participantScrollTop: 0,
+      interacting: false,
+      pendingSync: false
+    };
+    lotteryBindings.set(card, binding);
+    syncLotteryClone(card, widget, binding);
+    const observer = new MutationObserver(() => {
+      if (binding.interacting) {
+        binding.pendingSync = true;
+        return;
+      }
+      syncLotteryClone(card, widget, binding);
+    });
     observer.observe(widget, { childList: true, subtree: true, attributes: true, characterData: true });
-    lotteryBindings.set(card, observer);
+    binding.observer = observer;
     card.dataset.imLotteryEnhanced = "1";
   }
 }
@@ -86,7 +134,7 @@ export function rebindLotteryCards() {
   const body = document.querySelector(".im-chat-body");
   if (!body) return;
   for (const card of body.querySelectorAll(".im-lottery-card")) {
-    lotteryBindings.get(card)?.disconnect();
+    lotteryBindings.get(card)?.observer?.disconnect();
     lotteryBindings.delete(card);
     delete card.dataset.imLotteryEnhanced;
   }
