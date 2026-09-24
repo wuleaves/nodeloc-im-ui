@@ -96,7 +96,7 @@ function decorateDrawer(drawer) {
   }
   syncWindowButton(drawer);
   document.querySelectorAll(".im-rail-item[data-rail-key]").forEach((item) => {
-    item.classList.toggle("active", item.dataset.railKey === "messages");
+    item.classList.toggle("active", item.dataset.railKey === "chats");
   });
   if (!drawerObserver) {
     drawerObserver = new MutationObserver(() => {
@@ -176,7 +176,7 @@ export function closeDingtalkChatHub({ closeNative = true } = {}) {
   drawer?.style.removeProperty("--im-chat-window-y");
   drawer?.style.removeProperty("--im-chat-window-w");
   drawer?.style.removeProperty("--im-chat-window-h");
-  document.querySelector('.im-rail-item[data-rail-key="messages"]')?.classList.remove("active");
+  document.querySelector('.im-rail-item[data-rail-key="chats"]')?.classList.remove("active");
   document.querySelector('.im-rail-item[data-rail-key="chat"]')?.classList.add("active");
   document.dispatchEvent(new CustomEvent("im-chat-hub-close"));
   if (!closeNative || !drawer) return;

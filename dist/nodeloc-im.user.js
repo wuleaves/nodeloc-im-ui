@@ -2,7 +2,7 @@
 // @name         NodeLoc · IM 外观（钉钉 / 飞书 / 企业微信）
 // @namespace    https://www.nodeloc.com/
 // @author       czm15053, NodeLoc adaptation
-// @version      0.7.0
+// @version      0.7.1
 // @description  NodeLoc 三栏 IM 外观：节点/主题列表、帖子流、回复、搜索、用户与通知，支持三套皮肤和明暗主题。
 // @match        https://www.nodeloc.com/*
 // @noframes
@@ -13081,7 +13081,7 @@ ${item.label}`;
     }
     syncWindowButton(drawer);
     document.querySelectorAll(".im-rail-item[data-rail-key]").forEach((item) => {
-      item.classList.toggle("active", item.dataset.railKey === "messages");
+      item.classList.toggle("active", item.dataset.railKey === "chats");
     });
     if (!drawerObserver) {
       drawerObserver = new MutationObserver(() => {
@@ -13161,7 +13161,7 @@ ${item.label}`;
     drawer == null ? void 0 : drawer.style.removeProperty("--im-chat-window-y");
     drawer == null ? void 0 : drawer.style.removeProperty("--im-chat-window-w");
     drawer == null ? void 0 : drawer.style.removeProperty("--im-chat-window-h");
-    (_a2 = document.querySelector('.im-rail-item[data-rail-key="messages"]')) == null ? void 0 : _a2.classList.remove("active");
+    (_a2 = document.querySelector('.im-rail-item[data-rail-key="chats"]')) == null ? void 0 : _a2.classList.remove("active");
     (_b2 = document.querySelector('.im-rail-item[data-rail-key="chat"]')) == null ? void 0 : _b2.classList.add("active");
     document.dispatchEvent(new CustomEvent("im-chat-hub-close"));
     if (!closeNative || !drawer) return;
@@ -13371,9 +13371,8 @@ ${item.label}`;
         return;
       }
       if (SKIN_ID === "dingtalk") closeDingtalkWorkbench();
-      if (SKIN_ID === "dingtalk" && key === "messages") {
+      if (SKIN_ID === "dingtalk" && key === "chats") {
         setNav2Open(false);
-        setActiveRailKey("messages", { force: true });
         openDingtalkChatHub();
         return;
       }
@@ -17781,7 +17780,7 @@ ${item.label}`;
       }
       if (window.__nodelocImBootstrapped) return;
       window.__nodelocImBootstrapped = true;
-      console.info(`[nodeloc-im] v${"0.7.0"} loaded, skin=${SKIN_ID}`);
+      console.info(`[nodeloc-im] v${"0.7.1"} loaded, skin=${SKIN_ID}`);
       if (cfBlocked() || nativeNotFound()) ;
       else {
         injectStyle();

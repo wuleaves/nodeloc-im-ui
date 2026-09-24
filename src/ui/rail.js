@@ -218,7 +218,7 @@ export function ensureRailDingtalk() {
       .join("");
   rail.appendChild(items);
 
-  // rail 项点击：注册表内有源的切换中栏内容；「聊天」跳原生 /chat；装饰项暂不响应
+  // rail 项点击：私信使用站内私信列表；钉钉「聊天」承载原生 Chat 中心。
   items.addEventListener("click", (e) => {
     const btn = e.target.closest(".im-rail-item[data-rail-key]");
     if (!btn || !items.contains(btn)) return;
@@ -230,15 +230,14 @@ export function ensureRailDingtalk() {
       return;
     }
     if (SKIN_ID === "dingtalk") closeDingtalkWorkbench();
-    if (SKIN_ID === "dingtalk" && key === "messages") {
+    if (SKIN_ID === "dingtalk" && key === "chats") {
       setNav2Open(false);
-      setActiveRailKey("messages", { force: true });
       openDingtalkChatHub();
       return;
     }
     if (SKIN_ID === "dingtalk" && !isDingtalkChatWindowed()) closeDingtalkChatHub();
     if (key === "chats") {
-      // 原生 /chat 会直接打开最近频道（像和某人的单聊）；频道列表页才是「聊天列表」
+      // 非钉钉皮肤沿用原生 Chat 列表页。
       navigateInApp("/chat/channels");
       return;
     }
