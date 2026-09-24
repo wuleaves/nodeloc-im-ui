@@ -2,7 +2,7 @@
 // @name         NodeLoc · IM 外观（钉钉 / 飞书 / 企业微信）
 // @namespace    https://www.nodeloc.com/
 // @author       czm15053, NodeLoc adaptation
-// @version      0.6.8
+// @version      0.6.9
 // @description  NodeLoc 三栏 IM 外观：节点/主题列表、帖子流、回复、搜索、用户与通知，支持三套皮肤和明暗主题。
 // @match        https://www.nodeloc.com/*
 // @noframes
@@ -3167,6 +3167,12 @@ width: 10px; height: 10px; border-radius: 3px;
 .im-posting-gate-secondary:hover { background: var(--im-hover); color: var(--im-text); }
 
 /* 关闭新话题时的原生“放弃草稿”等确认框必须高于 IM 三栏。 */
+.__ROOT_CLASS__.im-native-compose-closing #reply-control {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
 .__ROOT_CLASS__ .im-native-modal-host {
   z-index: 2147483100 !important;
   pointer-events: auto !important;
@@ -15549,7 +15555,10 @@ ${item.label}`;
     }, { once: true });
   }
   const ROOT_CLASS = "im-native-compose";
+  const CLOSING_CLASS = "im-native-compose-closing";
+  let closingSawModal = false;
   function applyEmbedState(open) {
+    if (open && document.documentElement.classList.contains(CLOSING_CLASS)) return;
     const panel = document.querySelector(".im-chat-panel");
     const active = !!(open && panel);
     document.documentElement.classList.toggle(ROOT_CLASS, active);
@@ -15666,12 +15675,53 @@ ${item.label}`;
       if (host.parentElement === root2) host.classList.add("im-native-modal-host");
     }
     const open = !!document.querySelector(".im-native-modal-host");
+    if (open && document.documentElement.classList.contains(CLOSING_CLASS)) closingSawModal = true;
     document.documentElement.classList.toggle("im-native-modal-open", open);
+    if (!isComposerOpen()) {
+      document.documentElement.classList.remove(CLOSING_CLASS);
+      closingSawModal = false;
+    }
+  }
+  function releaseComposerUiImmediately() {
+    const root2 = document.documentElement;
+    if (!isComposerOpen()) return;
+    closingSawModal = false;
+    root2.classList.add(CLOSING_CLASS);
+    root2.classList.remove(ROOT_CLASS);
+    for (const zone of document.querySelectorAll(".im-composer")) zone.removeAttribute("data-native");
+    syncEmbedGeometry(false);
+    requestAnimationFrame(syncNativeModalHosts);
+  }
+  function isComposerCloseControl(target) {
+    var _a2;
+    const control = (_a2 = target.closest) == null ? void 0 : _a2.call(target, "button, a, [role='button']");
+    if (!control || !control.closest("#reply-control")) return false;
+    if (control.matches(
+      ".close, .cancel, .discard, .discard-draft, [data-action='close'], [data-action='discard'], [aria-label*='关闭'], [aria-label*='舍弃'], [title*='关闭'], [title*='舍弃']"
+    )) return true;
+    return /^(舍弃|放弃|关闭)$/.test((control.textContent || "").replace(/\s+/g, "").trim());
+  }
+  function isModalResumeControl(target) {
+    var _a2;
+    const control = (_a2 = target.closest) == null ? void 0 : _a2.call(target, "button, a, [role='button']");
+    if (!(control == null ? void 0 : control.closest(".im-native-modal-host"))) return false;
+    const label = `${control.textContent || ""} ${control.getAttribute("aria-label") || ""}`.trim();
+    return /取消|继续编辑|返回/.test(label) || control.matches(".d-modal__close, .modal-close, [data-action='close']");
+  }
+  function resumeComposerUi() {
+    const root2 = document.documentElement;
+    root2.classList.remove(CLOSING_CLASS);
+    closingSawModal = false;
+    if (isComposerOpen()) applyEmbedState(true);
   }
   window.addEventListener("resize", reSyncEmbedGeometry);
   window.addEventListener("im-layout-change", reSyncEmbedGeometry);
   function initComposerEmbed() {
     watchReplyControl((open) => {
+      if (!open) {
+        document.documentElement.classList.remove(CLOSING_CLASS);
+        closingSawModal = false;
+      }
       applyEmbedState(open);
       syncNativeModalHosts();
       if (!open) {
@@ -15681,6 +15731,15 @@ ${item.label}`;
       }
     });
     new MutationObserver(syncNativeModalHosts).observe(document.body, { childList: true, subtree: true });
+    document.addEventListener("click", (event) => {
+      if (isComposerCloseControl(event.target)) {
+        requestAnimationFrame(releaseComposerUiImmediately);
+        return;
+      }
+      if (document.documentElement.classList.contains(CLOSING_CLASS) && closingSawModal && isModalResumeControl(event.target)) {
+        setTimeout(resumeComposerUi, 0);
+      }
+    }, true);
     document.addEventListener(
       "keydown",
       (e) => {
@@ -17727,7 +17786,7 @@ ${item.label}`;
       }
     }
     function bootstrap() {
-      console.info(`[nodeloc-im] v${"0.6.8"} loaded, skin=${SKIN_ID}`);
+      console.info(`[nodeloc-im] v${"0.6.9"} loaded, skin=${SKIN_ID}`);
       if (!document.documentElement) {
         setTimeout(bootstrap, 0);
         return;

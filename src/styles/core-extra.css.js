@@ -44,6 +44,12 @@ width: 10px; height: 10px; border-radius: 3px;
 .im-posting-gate-secondary:hover { background: var(--im-hover); color: var(--im-text); }
 
 /* 关闭新话题时的原生“放弃草稿”等确认框必须高于 IM 三栏。 */
+.__ROOT_CLASS__.im-native-compose-closing #reply-control {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
 .__ROOT_CLASS__ .im-native-modal-host {
   z-index: 2147483100 !important;
   pointer-events: auto !important;

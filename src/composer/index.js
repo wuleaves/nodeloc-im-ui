@@ -3,10 +3,14 @@
 // 零 chatHooks 耦合：打开链（openNativeComposer 三级兜底）在 ui/composer.js 自持，
 // 嵌入态样式纯 CSS 消费 html.im-native-compose / .im-composer[data-native]，无需跨层回调。
 import { watchReplyControl } from "./native-bridge.js";
+import { isComposerOpen } from "../bridge/discourse.js";
 
 const ROOT_CLASS = "im-native-compose";
+const CLOSING_CLASS = "im-native-compose-closing";
+let closingSawModal = false;
 
 function applyEmbedState(open) {
+  if (open && document.documentElement.classList.contains(CLOSING_CLASS)) return;
   const panel = document.querySelector(".im-chat-panel");
   const active = !!(open && panel);
   document.documentElement.classList.toggle(ROOT_CLASS, active);
@@ -139,13 +143,61 @@ function syncNativeModalHosts() {
     if (host.parentElement === root) host.classList.add("im-native-modal-host");
   }
   const open = !!document.querySelector(".im-native-modal-host");
+  if (open && document.documentElement.classList.contains(CLOSING_CLASS)) closingSawModal = true;
   document.documentElement.classList.toggle("im-native-modal-open", open);
+  if (!isComposerOpen()) {
+    document.documentElement.classList.remove(CLOSING_CLASS);
+    closingSawModal = false;
+  }
+}
+
+/**
+ * 原生关闭动作可能同时保存/删除远端草稿。网络慢或断网时，组件状态迟迟不回落，
+ * 但关闭界面本身不应等待请求：先本地隐藏并释放 IM 锁，原生事件仍照常在后台执行。
+ */
+function releaseComposerUiImmediately() {
+  const root = document.documentElement;
+  if (!isComposerOpen()) return;
+  closingSawModal = false;
+  root.classList.add(CLOSING_CLASS);
+  root.classList.remove(ROOT_CLASS);
+  for (const zone of document.querySelectorAll(".im-composer")) zone.removeAttribute("data-native");
+  syncEmbedGeometry(false);
+  requestAnimationFrame(syncNativeModalHosts);
+}
+
+function isComposerCloseControl(target) {
+  const control = target.closest?.("button, a, [role='button']");
+  if (!control || !control.closest("#reply-control")) return false;
+  if (control.matches(
+    ".close, .cancel, .discard, .discard-draft, [data-action='close'], [data-action='discard'], " +
+    "[aria-label*='关闭'], [aria-label*='舍弃'], [title*='关闭'], [title*='舍弃']"
+  )) return true;
+  return /^(舍弃|放弃|关闭)$/.test((control.textContent || "").replace(/\s+/g, "").trim());
+}
+
+function isModalResumeControl(target) {
+  const control = target.closest?.("button, a, [role='button']");
+  if (!control?.closest(".im-native-modal-host")) return false;
+  const label = `${control.textContent || ""} ${control.getAttribute("aria-label") || ""}`.trim();
+  return /取消|继续编辑|返回/.test(label) || control.matches(".d-modal__close, .modal-close, [data-action='close']");
+}
+
+function resumeComposerUi() {
+  const root = document.documentElement;
+  root.classList.remove(CLOSING_CLASS);
+  closingSawModal = false;
+  if (isComposerOpen()) applyEmbedState(true);
 }
 window.addEventListener("resize", reSyncEmbedGeometry);
 window.addEventListener("im-layout-change", reSyncEmbedGeometry); // 侧栏/列表拖宽时跟随
 
 export function initComposerEmbed() {
   watchReplyControl((open) => {
+    if (!open) {
+      document.documentElement.classList.remove(CLOSING_CLASS);
+      closingSawModal = false;
+    }
     applyEmbedState(open);
     syncNativeModalHosts();
     // 关闭动画和确认弹窗可能晚一到数帧挂载。
@@ -156,6 +208,16 @@ export function initComposerEmbed() {
     }
   });
   new MutationObserver(syncNativeModalHosts).observe(document.body, { childList: true, subtree: true });
+  document.addEventListener("click", (event) => {
+    if (isComposerCloseControl(event.target)) {
+      // 捕获阶段不阻止原生事件，只把美化层的视觉关闭改成本地即时完成。
+      requestAnimationFrame(releaseComposerUiImmediately);
+      return;
+    }
+    if (document.documentElement.classList.contains(CLOSING_CLASS) && closingSawModal && isModalResumeControl(event.target)) {
+      setTimeout(resumeComposerUi, 0);
+    }
+  }, true);
   // IM 习惯：嵌入态编辑器内 Enter 直发、⇧Enter 换行（捕获阶段先于 ProseMirror 处理）
   document.addEventListener(
     "keydown",
