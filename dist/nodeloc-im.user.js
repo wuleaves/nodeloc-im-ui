@@ -2,7 +2,7 @@
 // @name         NodeLoc · IM 外观（钉钉 / 飞书 / 企业微信）
 // @namespace    https://www.nodeloc.com/
 // @author       czm15053, NodeLoc adaptation
-// @version      0.7.5
+// @version      0.7.6
 // @description  NodeLoc 三栏 IM 外观：节点/主题列表、帖子流、回复、搜索、用户与通知，支持三套皮肤和明暗主题。
 // @match        https://www.nodeloc.com/*
 // @noframes
@@ -12620,6 +12620,7 @@ ${data.raw}
     }
   }
   const TTL$1 = 3e4;
+  const bookmarkBodySigs = /* @__PURE__ */ new WeakMap();
   function makeTopicListSource({ key, getApiPath, label }) {
     const state2 = { topics: [], usersById: {}, moreUrl: null, loading: false, loadedAt: 0, error: null };
     async function load(force) {
@@ -12690,6 +12691,21 @@ ${data.raw}
       }
     };
   }
+  function bookmarkItems(data) {
+    var _a2, _b2;
+    if (Array.isArray(data == null ? void 0 : data.bookmarks)) return data.bookmarks;
+    if (Array.isArray((_a2 = data == null ? void 0 : data.user_bookmark_list) == null ? void 0 : _a2.bookmarks)) return data.user_bookmark_list.bookmarks;
+    if (Array.isArray((_b2 = data == null ? void 0 : data.bookmark_list) == null ? void 0 : _b2.bookmarks)) return data.bookmark_list.bookmarks;
+    return [];
+  }
+  function bookmarkMoreUrl(data) {
+    var _a2, _b2;
+    return (data == null ? void 0 : data.more_bookmarks_url) || (data == null ? void 0 : data.load_more_bookmarks) || ((_a2 = data == null ? void 0 : data.user_bookmark_list) == null ? void 0 : _a2.more_bookmarks_url) || ((_b2 = data == null ? void 0 : data.bookmark_list) == null ? void 0 : _b2.more_bookmarks_url) || null;
+  }
+  function bookmarkApiPath() {
+    const username = getCurrentUsername();
+    return username ? `/u/${encodeURIComponent(username)}/user-menu-bookmarks` : "/bookmarks.json";
+  }
   function makeBookmarkSource() {
     const state2 = { items: [], moreUrl: null, loading: false, loadedAt: 0, error: null };
     async function load() {
@@ -12697,9 +12713,9 @@ ${data.raw}
       if (state2.items.length && Date.now() - state2.loadedAt < TTL$1) return;
       state2.loading = true;
       try {
-        const data = await api("/bookmarks.json");
-        state2.items = data.bookmarks || [];
-        state2.moreUrl = data.more_bookmarks_url || null;
+        const data = await api(bookmarkApiPath());
+        state2.items = bookmarkItems(data);
+        state2.moreUrl = bookmarkMoreUrl(data);
         state2.loadedAt = Date.now();
         state2.error = null;
       } catch (err) {
@@ -12714,19 +12730,24 @@ ${data.raw}
       if (panel && panel.dataset.railKey === "bookmarks") render(panel);
     }
     function rowHtml2(b) {
-      const cat = b.category_id ? categoryById(b.category_id) : null;
-      const title = b.title || b.name || b.fancy_title || "书签";
-      const href = b.topic_id ? `/t/-/${b.topic_id}/${b.linked_post_number || 1}` : "";
+      var _a2, _b2;
+      const categoryId = b.category_id || ((_a2 = b.topic) == null ? void 0 : _a2.category_id);
+      const cat = categoryId ? categoryById(categoryId) : null;
+      const title = b.title || b.fancy_title || b.topic_title || b.name || "书签";
+      const rawHref = b.bookmarkable_url || b.url || "";
+      const href = rawHref || (b.topic_id ? `/t/-/${b.topic_id}/${b.linked_post_number || b.post_number || 1}` : "");
+      const topicId = b.topic_id || Number((String(href).match(/^\/t\/(?:[^/]+\/)?(\d+)/) || [])[1]) || "";
+      const secondary = (cat == null ? void 0 : cat.name) || ((_b2 = b.user) == null ? void 0 : _b2.username) || (b.tags || []).join(" / ") || "书签";
       return `
-      <a class="im-conv im-bm-row" ${href ? `href="${escapeHtml(href)}"` : ""} data-topic-id="${b.topic_id || ""}" title="${escapeHtml(title)}">
+      <a class="im-conv im-bm-row" ${href ? `href="${escapeHtml(href)}"` : ""} data-topic-id="${topicId}" title="${escapeHtml(title)}">
         <span class="im-conv-avatar is-solid" style="background:linear-gradient(135deg,#F0A63A,#D97706);color:#fff;display:inline-flex;align-items:center;justify-content:center">${ICONS.bookmark}</span>
         <span class="im-conv-info">
           <span class="im-conv-top">
             <span class="im-conv-title"><span class="im-conv-name">${escapeHtml(title)}</span></span>
-            <span class="im-conv-time">${escapeHtml(formatTime(b.updated_at || b.created_at))}</span>
+            <span class="im-conv-time">${escapeHtml(formatTime(b.updated_at || b.created_at || b.reminder_at))}</span>
           </span>
           <span class="im-conv-bottom">
-            <span class="im-conv-msg">${escapeHtml(cat ? cat.name : (b.tags || []).join(" / ") || "书签")}</span>
+            <span class="im-conv-msg">${escapeHtml(secondary)}</span>
           </span>
         </span>
       </a>`;
@@ -12747,7 +12768,11 @@ ${data.raw}
         load();
         return;
       }
-      body.innerHTML = state2.items.map(rowHtml2).join("") + `<div class="im-list-status">${state2.moreUrl ? "下拉加载更多…" : state2.items.length ? "没有更多了" : "暂无书签"}</div>`;
+      const html = state2.items.map(rowHtml2).join("") + `<div class="im-list-status">${state2.moreUrl ? "下拉加载更多…" : state2.items.length ? "没有更多了" : "暂无书签"}</div>`;
+      if (bookmarkBodySigs.get(body) !== html) {
+        bookmarkBodySigs.set(body, html);
+        body.innerHTML = html;
+      }
     }
     return {
       render,
@@ -12756,8 +12781,9 @@ ${data.raw}
         if (body.scrollTop + body.clientHeight < body.scrollHeight - 120) return;
         state2.loading = true;
         api(state2.moreUrl).then((data) => {
-          state2.items = state2.items.concat(data.bookmarks || []);
-          state2.moreUrl = data.more_bookmarks_url || null;
+          const known = new Set(state2.items.map((b) => b.id || b.bookmarkable_url).filter(Boolean));
+          state2.items = state2.items.concat(bookmarkItems(data).filter((b) => !known.has(b.id || b.bookmarkable_url)));
+          state2.moreUrl = bookmarkMoreUrl(data);
           state2.loadedAt = Date.now();
         }).catch(() => {
         }).finally(() => {
@@ -17930,7 +17956,7 @@ ${item.label}`;
       }
       if (window.__nodelocImBootstrapped) return;
       window.__nodelocImBootstrapped = true;
-      console.info(`[nodeloc-im] v${"0.7.5"} loaded, skin=${SKIN_ID}`);
+      console.info(`[nodeloc-im] v${"0.7.6"} loaded, skin=${SKIN_ID}`);
       if (cfBlocked() || nativeNotFound()) ;
       else {
         injectStyle();

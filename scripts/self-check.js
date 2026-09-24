@@ -141,6 +141,13 @@ for (const marker of ["function bindLotteryParticipantScroll(", "participantScro
   }
 }
 
+for (const marker of ["function bookmarkApiPath(", "user-menu-bookmarks", "bookmarkable_url"]) {
+  if (!output.includes(marker)) {
+    console.error(`missing native bookmark-source marker: ${marker}`);
+    ok = false;
+  }
+}
+
 if (ok) {
   console.log("self-check passed");
   process.exit(0);
