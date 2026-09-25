@@ -2,7 +2,7 @@
 // @name         NodeLoc · IM 外观（钉钉 / 飞书 / 企业微信）
 // @namespace    https://www.nodeloc.com/
 // @author       czm15053, NodeLoc adaptation
-// @version      0.7.11
+// @version      0.7.12
 // @description  NodeLoc 三栏 IM 外观：节点/主题列表、帖子流、回复、搜索、用户与通知，支持三套皮肤和明暗主题。
 // @match        https://www.nodeloc.com/*
 // @noframes
@@ -17750,16 +17750,50 @@ ${item.label}`;
       fab == null ? void 0 : fab.remove();
       return;
     }
-    if (fab) return;
-    fab = document.createElement("button");
-    fab.className = "im-mode-fab";
-    fab.title = "切回 IM 视图";
-    fab.innerHTML = ICONS.chat;
-    fab.addEventListener("click", () => {
-      setViewMode("im");
-      location.reload();
+    if (!document.body) return;
+    if (!fab) {
+      fab = document.createElement("button");
+      fab.className = "im-mode-fab";
+      fab.type = "button";
+      fab.title = "切换到美化模式";
+      fab.setAttribute("aria-label", "切换到美化模式");
+      fab.innerHTML = ICONS.chat;
+      fab.addEventListener("click", () => {
+        setViewMode("im");
+        location.reload();
+      });
+      document.body.appendChild(fab);
+    }
+    Object.assign(fab.style, {
+      position: "fixed",
+      right: "20px",
+      bottom: "20px",
+      zIndex: "2147483646",
+      width: "46px",
+      height: "46px",
+      display: "flex",
+      visibility: "visible",
+      opacity: "1",
+      pointerEvents: "auto"
     });
-    document.body.appendChild(fab);
+    fab.hidden = false;
+  }
+  function startModeFabWatch() {
+    if (window.__imModeFabWatchStarted) return;
+    window.__imModeFabWatchStarted = true;
+    const keepAlive = () => {
+      var _a2;
+      if (getViewMode() === "native") ensureModeFab();
+      else (_a2 = document.querySelector(".im-mode-fab")) == null ? void 0 : _a2.remove();
+    };
+    keepAlive();
+    window.setInterval(keepAlive, 1e3);
+    for (const event of ["pageshow", "popstate", "hashchange", "online"]) {
+      window.addEventListener(event, keepAlive);
+    }
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") keepAlive();
+    });
   }
   function ensureStripDingtalk() {
     var _a2;
@@ -18274,7 +18308,8 @@ ${item.label}`;
       }
       if (window.__nodelocImBootstrapped) return;
       window.__nodelocImBootstrapped = true;
-      console.info(`[nodeloc-im] v${"0.7.11"} loaded, skin=${SKIN_ID}`);
+      startModeFabWatch();
+      console.info(`[nodeloc-im] v${"0.7.12"} loaded, skin=${SKIN_ID}`);
       if (cfBlocked() || nativeNotFound()) ;
       else {
         injectStyle();

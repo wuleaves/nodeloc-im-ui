@@ -45,7 +45,7 @@ import "./features/ai-summary.js";
 import "./features/spam-filter.js";
 import "./features/highlight-keywords.js";
 import { ensureTitlebar } from "./ui/titlebar.js";
-import { ensureModeFab } from "./ui/mode-fab.js";
+import { ensureModeFab, startModeFabWatch } from "./ui/mode-fab.js";
 import {
   ensureRail, syncRail, ensureStrip, ensureSkinToggle,
   ensureDarkModeToggle, syncDarkModeToggle,
@@ -308,6 +308,7 @@ export function run() {
     }
     if (window.__nodelocImBootstrapped) return;
     window.__nodelocImBootstrapped = true;
+    startModeFabWatch();
     console.info(`[nodeloc-im] v${__IM_VERSION__} loaded, skin=${SKIN_ID}`);
     if (cfBlocked() || nativeNotFound()) {
       // 挑战页 / 无效话题页：document-start 不做任何套皮（原皮），等真实内容替换后由 observer 复检恢复

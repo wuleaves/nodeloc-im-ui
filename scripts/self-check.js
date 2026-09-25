@@ -170,7 +170,7 @@ for (const marker of [
   }
 }
 
-for (const marker of ["im-native-view-toggle", "切换回 NodeLoc 原生界面", "function bindNativeViewToggle("]) {
+for (const marker of ["im-native-view-toggle", "切换回 NodeLoc 原生界面", "function bindNativeViewToggle(", "function startModeFabWatch(", "2147483646"]) {
   if (!output.includes(marker)) {
     console.error(`missing native-view toggle marker: ${marker}`);
     ok = false;
