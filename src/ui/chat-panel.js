@@ -33,6 +33,139 @@ function afterChatPaint(body) {
 }
 
 const lotteryBindings = new WeakMap();
+const nodeCardCache = new Map();
+let nodeCardCloseTimer = 0;
+
+function nodeSlug(href) {
+  return String(href || "").match(/^\/n\/([^/?#]+)/)?.[1] || "";
+}
+
+function nativeNodeJoinControl(slug) {
+  if (!slug) return null;
+  const expected = `/n/${decodeURIComponent(slug)}`;
+  const links = [...document.querySelectorAll('a[href^="/n/"]')].filter((link) => {
+    if (link.closest(".im-shell, .im-chat-panel, .im-node-hover-card")) return false;
+    try { return decodeURIComponent(new URL(link.href, location.origin).pathname).replace(/\/$/, "") === expected; }
+    catch { return false; }
+  });
+  for (const link of links) {
+    let scope = link.parentElement;
+    for (let depth = 0; scope && depth < 9; depth++, scope = scope.parentElement) {
+      const button = scope.querySelector?.("button.community-join-button")
+        || [...(scope.querySelectorAll?.("button") || [])].find((item) => /^(?:加入|已加入|退出|离开)(?:节点)?$/.test(item.textContent?.trim() || ""));
+      if (button) return button;
+    }
+  }
+  return null;
+}
+
+function nodeMembership(slug) {
+  const button = nativeNodeJoinControl(slug);
+  const text = button?.textContent?.replace(/\s+/g, " ").trim() || "";
+  const memberClass = `group-${decodeURIComponent(slug).replace(/[^a-z0-9_-]/gi, "-")}-members`;
+  return {
+    button,
+    joined: document.body.classList.contains(memberClass) || /已加入|退出|离开|joined/i.test(text),
+    joinable: !!button && /加入|join/i.test(text)
+  };
+}
+
+function paintNodeMembership(control, slug) {
+  if (!control?.isConnected) return;
+  const state = nodeMembership(slug);
+  control.disabled = !state.joined && !state.joinable;
+  control.dataset.joined = state.joined ? "1" : "0";
+  control.textContent = state.joined ? "✅" : "➕";
+  control.title = state.joined ? "已加入该节点" : (state.joinable ? "加入该节点" : "正在获取节点状态…");
+  control.setAttribute("aria-label", control.title);
+}
+
+async function joinCurrentNode(control) {
+  const slug = control.dataset.nodeSlug || "";
+  const state = nodeMembership(slug);
+  if (state.joined) return;
+  if (!state.button) {
+    chatHooks.toast?.("原生加入控件尚未加载，请稍后重试", control);
+    paintNodeMembership(control, slug);
+    return;
+  }
+  control.disabled = true;
+  control.textContent = "…";
+  state.button.click();
+  for (let attempt = 0; attempt < 24; attempt++) {
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    const current = nodeMembership(slug);
+    if (current.joined || (!state.button.isConnected && !current.button)) {
+      control.disabled = false;
+      control.dataset.joined = "1";
+      control.textContent = "✅";
+      control.title = "已加入该节点";
+      chatHooks.toast?.("已加入该节点", control);
+      return;
+    }
+  }
+  control.disabled = false;
+  paintNodeMembership(control, slug);
+  chatHooks.toast?.("加入尚未完成，请重试", control);
+}
+
+function nodeCardValue(data, ...keys) {
+  for (const key of keys) {
+    const value = key.split(".").reduce((out, part) => out?.[part], data);
+    if (value !== undefined && value !== null && value !== "") return value;
+  }
+  return "";
+}
+
+function nodeCardHtml(data, fallback) {
+  const category = data?.category || data || fallback || {};
+  const name = nodeCardValue(data, "name", "category.name") || fallback?.name || "节点";
+  const description = stripHtml(nodeCardValue(data, "description", "description_text", "category.description", "category.description_text") || "暂无节点介绍");
+  const created = nodeCardValue(data, "created_at", "category.created_at");
+  const date = created ? new Intl.DateTimeFormat("zh-CN", { year: "numeric", month: "long", day: "numeric" }).format(new Date(created)) : "";
+  const members = nodeCardValue(data, "members_count", "member_count", "category.members_count");
+  const topics = nodeCardValue(data, "topic_count", "topics_count", "category.topic_count");
+  const posts = nodeCardValue(data, "post_count", "posts_count", "category.post_count");
+  const color = category.color || fallback?.color || "8F959E";
+  const stat = (value, label) => value === "" ? "" : `<span><b>${escapeHtml(String(value))}</b><small>${label}</small></span>`;
+  return `<div class="im-node-hover-head"><i style="background:#${escapeHtml(color)}"></i><strong>${escapeHtml(name)}</strong></div>
+    <p>${escapeHtml(description)}</p>
+    <div class="im-node-hover-meta">${date ? `<span>♙ 创建于 ${escapeHtml(date)}</span>` : ""}<span>◎ ${category.read_restricted ? "受限" : "公开"}</span></div>
+    ${(members !== "" || topics !== "" || posts !== "") ? `<div class="im-node-hover-stats">${stat(members, "成员")}${stat(topics, "主题")}${stat(posts, "帖子")}</div>` : ""}`;
+}
+
+async function showNodeCard(anchor) {
+  clearTimeout(nodeCardCloseTimer);
+  const slug = anchor.dataset.nodeSlug || nodeSlug(anchor.getAttribute("href"));
+  if (!slug) return;
+  let card = document.querySelector(".im-node-hover-card");
+  if (!card) {
+    card = document.createElement("aside");
+    card.className = "im-node-hover-card";
+    card.addEventListener("mouseenter", () => clearTimeout(nodeCardCloseTimer));
+    card.addEventListener("mouseleave", hideNodeCard);
+    document.body.appendChild(card);
+  }
+  const fallback = categoryById(Number(anchor.dataset.categoryId)) || {};
+  card.innerHTML = nodeCardCache.has(slug) ? nodeCardHtml(nodeCardCache.get(slug), fallback) : `<div class="im-node-hover-loading">正在加载节点信息…</div>`;
+  card.classList.add("is-open");
+  const rect = anchor.getBoundingClientRect();
+  card.style.left = `${Math.max(12, Math.min(window.innerWidth - 344, rect.left - 20))}px`;
+  card.style.top = `${Math.max(12, Math.min(window.innerHeight - card.offsetHeight - 12, rect.bottom + 9))}px`;
+  if (nodeCardCache.has(slug)) return;
+  try {
+    const data = await api(`/n/${encodeURIComponent(slug)}.json`);
+    nodeCardCache.set(slug, data);
+    if (card.classList.contains("is-open") && anchor.matches(":hover")) card.innerHTML = nodeCardHtml(data, fallback);
+  } catch {
+    if (card.classList.contains("is-open")) card.innerHTML = nodeCardHtml(fallback, fallback);
+  }
+}
+
+function hideNodeCard() {
+  clearTimeout(nodeCardCloseTimer);
+  nodeCardCloseTimer = setTimeout(() => document.querySelector(".im-node-hover-card")?.classList.remove("is-open"), 160);
+}
 
 function cloneLotteryWidget(widget) {
   const clone = widget.cloneNode(true);
@@ -377,6 +510,13 @@ function bindChatPanelEvents(panel) {
       return;
     }
     if (e.target.closest(".im-chat-compose, .im-composer-tools, .im-composer-target")) {
+      return;
+    }
+    const joinNode = e.target.closest(".im-node-membership");
+    if (joinNode && panel.contains(joinNode)) {
+      e.preventDefault();
+      e.stopPropagation();
+      joinCurrentNode(joinNode);
       return;
     }
     // 聊天头分类 chip：站内软跳转
@@ -1176,8 +1316,21 @@ export async function loadTopic(topicId) {
       const chipsBox = document.querySelector(".im-chat-chips");
       if (chipsBox) {
         chipsBox.innerHTML = cat
-          ? `<a class="im-chat-chip" href="${escapeHtml(categoryHref(cat))}"><span class="im-nav2-cat-dot" style="background:#${escapeHtml(cat.color || "8F959E")}"></span>${escapeHtml(cat.name)}</a>`
+          ? `<a class="im-chat-chip" href="${escapeHtml(categoryHref(cat))}" data-node-slug="${escapeHtml(cat.slug || "")}" data-category-id="${escapeHtml(String(cat.id || ""))}"><span class="im-nav2-cat-dot" style="background:#${escapeHtml(cat.color || "8F959E")}"></span>${escapeHtml(cat.name)}</a><button type="button" class="im-node-membership" data-node-slug="${escapeHtml(cat.slug || "")}" aria-label="正在获取节点状态…">➕</button>`
           : "";
+        const chip = chipsBox.querySelector(".im-chat-chip");
+        const membership = chipsBox.querySelector(".im-node-membership");
+        chip?.addEventListener("mouseenter", () => showNodeCard(chip));
+        chip?.addEventListener("mouseleave", hideNodeCard);
+        if (membership) {
+          paintNodeMembership(membership, cat?.slug || "");
+          let attempts = 0;
+          const syncMembership = setInterval(() => {
+            if (!membership.isConnected || chatState.topicId !== topicId || attempts++ >= 20) return clearInterval(syncMembership);
+            paintNodeMembership(membership, cat?.slug || "");
+            if (!membership.disabled) clearInterval(syncMembership);
+          }, 250);
+        }
       }
       if (cat && sub) sub.textContent = `归属于 ${cat.name} · ${replyTotal} 条回复`;
     });

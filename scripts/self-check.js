@@ -85,6 +85,13 @@ for (const marker of ["function enhanceVideoPlaceholders(", "video-placeholder-c
   }
 }
 
+for (const marker of ["function joinCurrentNode(", "im-node-membership", "im-node-hover-card", "/n/${encodeURIComponent(slug)}.json"]) {
+  if (!output.includes(marker)) {
+    console.error(`missing node-membership marker: ${marker}`);
+    ok = false;
+  }
+}
+
 for (const marker of ["function readNativeIcon(", "has-original-icon", "im-dd-workbench-search-wrap:focus-within"]) {
   if (!output.includes(marker)) {
     console.error(`missing workbench UI marker: ${marker}`);

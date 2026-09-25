@@ -2,7 +2,7 @@
 // @name         NodeLoc · IM 外观（钉钉 / 飞书 / 企业微信）
 // @namespace    https://www.nodeloc.com/
 // @author       czm15053, NodeLoc adaptation
-// @version      0.7.10
+// @version      0.7.11
 // @description  NodeLoc 三栏 IM 外观：节点/主题列表、帖子流、回复、搜索、用户与通知，支持三套皮肤和明暗主题。
 // @match        https://www.nodeloc.com/*
 // @noframes
@@ -3313,6 +3313,30 @@ display: inline-flex; align-items: center; gap: 3px;
 .im-chat-chip .im-nav2-cat-dot {
 width: 8px; height: 8px; border-radius: 2px; margin: 0;
 }
+
+.im-node-membership {
+  appearance: none; border: 0; background: transparent; padding: 0 1px;
+  min-width: 18px; height: 20px; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 14px; line-height: 1; cursor: pointer; border-radius: 4px;
+}
+.im-node-membership:hover:not(:disabled) { background: var(--im-hover); }
+.im-node-membership:disabled { cursor: wait; opacity: .55; }
+.im-node-membership[data-joined="1"] { cursor: default; }
+
+.im-node-hover-card {
+  position: fixed; z-index: 10080; display: none; width: 320px; max-height: min(520px, calc(100vh - 24px));
+  overflow: auto; box-sizing: border-box; padding: 18px; border: 1px solid var(--im-border);
+  border-radius: 14px; background: var(--im-bg); color: var(--im-text); box-shadow: 0 12px 34px rgba(20, 31, 51, .18);
+}
+.im-node-hover-card.is-open { display: block; }
+.im-node-hover-head { display: flex; align-items: center; gap: 10px; font-size: 17px; }
+.im-node-hover-head i { width: 28px; height: 28px; border-radius: 50%; flex: 0 0 auto; }
+.im-node-hover-card p { margin: 13px 0 9px; color: var(--im-text-2); font-size: 13px; line-height: 1.65; }
+.im-node-hover-meta { display: grid; gap: 5px; color: var(--im-text-3); font-size: 12px; }
+.im-node-hover-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 15px; padding-top: 14px; border-top: 1px solid var(--im-border); text-align: center; }
+.im-node-hover-stats span { display: grid; gap: 3px; }
+.im-node-hover-stats b { font-size: 18px; }
+.im-node-hover-stats small, .im-node-hover-loading { color: var(--im-text-3); font-size: 12px; }
 
 .im-list-chips {
 display: inline-flex; align-items: center; gap: 2px;
@@ -9586,6 +9610,142 @@ html.im-theme {
     (_b2 = chatHooks.syncAiSummary) == null ? void 0 : _b2.call(chatHooks);
   }
   const lotteryBindings = /* @__PURE__ */ new WeakMap();
+  const nodeCardCache = /* @__PURE__ */ new Map();
+  let nodeCardCloseTimer = 0;
+  function nodeSlug(href) {
+    var _a2;
+    return ((_a2 = String(href || "").match(/^\/n\/([^/?#]+)/)) == null ? void 0 : _a2[1]) || "";
+  }
+  function nativeNodeJoinControl(slug) {
+    var _a2, _b2;
+    if (!slug) return null;
+    const expected = `/n/${decodeURIComponent(slug)}`;
+    const links = [...document.querySelectorAll('a[href^="/n/"]')].filter((link) => {
+      if (link.closest(".im-shell, .im-chat-panel, .im-node-hover-card")) return false;
+      try {
+        return decodeURIComponent(new URL(link.href, location.origin).pathname).replace(/\/$/, "") === expected;
+      } catch {
+        return false;
+      }
+    });
+    for (const link of links) {
+      let scope = link.parentElement;
+      for (let depth = 0; scope && depth < 9; depth++, scope = scope.parentElement) {
+        const button = ((_a2 = scope.querySelector) == null ? void 0 : _a2.call(scope, "button.community-join-button")) || [...((_b2 = scope.querySelectorAll) == null ? void 0 : _b2.call(scope, "button")) || []].find((item) => {
+          var _a3;
+          return /^(?:加入|已加入|退出|离开)(?:节点)?$/.test(((_a3 = item.textContent) == null ? void 0 : _a3.trim()) || "");
+        });
+        if (button) return button;
+      }
+    }
+    return null;
+  }
+  function nodeMembership(slug) {
+    var _a2;
+    const button = nativeNodeJoinControl(slug);
+    const text = ((_a2 = button == null ? void 0 : button.textContent) == null ? void 0 : _a2.replace(/\s+/g, " ").trim()) || "";
+    const memberClass = `group-${decodeURIComponent(slug).replace(/[^a-z0-9_-]/gi, "-")}-members`;
+    return {
+      button,
+      joined: document.body.classList.contains(memberClass) || /已加入|退出|离开|joined/i.test(text),
+      joinable: !!button && /加入|join/i.test(text)
+    };
+  }
+  function paintNodeMembership(control, slug) {
+    if (!(control == null ? void 0 : control.isConnected)) return;
+    const state2 = nodeMembership(slug);
+    control.disabled = !state2.joined && !state2.joinable;
+    control.dataset.joined = state2.joined ? "1" : "0";
+    control.textContent = state2.joined ? "✅" : "➕";
+    control.title = state2.joined ? "已加入该节点" : state2.joinable ? "加入该节点" : "正在获取节点状态…";
+    control.setAttribute("aria-label", control.title);
+  }
+  async function joinCurrentNode(control) {
+    var _a2, _b2, _c;
+    const slug = control.dataset.nodeSlug || "";
+    const state2 = nodeMembership(slug);
+    if (state2.joined) return;
+    if (!state2.button) {
+      (_a2 = chatHooks.toast) == null ? void 0 : _a2.call(chatHooks, "原生加入控件尚未加载，请稍后重试", control);
+      paintNodeMembership(control, slug);
+      return;
+    }
+    control.disabled = true;
+    control.textContent = "…";
+    state2.button.click();
+    for (let attempt = 0; attempt < 24; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      const current = nodeMembership(slug);
+      if (current.joined || !state2.button.isConnected && !current.button) {
+        control.disabled = false;
+        control.dataset.joined = "1";
+        control.textContent = "✅";
+        control.title = "已加入该节点";
+        (_b2 = chatHooks.toast) == null ? void 0 : _b2.call(chatHooks, "已加入该节点", control);
+        return;
+      }
+    }
+    control.disabled = false;
+    paintNodeMembership(control, slug);
+    (_c = chatHooks.toast) == null ? void 0 : _c.call(chatHooks, "加入尚未完成，请重试", control);
+  }
+  function nodeCardValue(data, ...keys) {
+    for (const key of keys) {
+      const value = key.split(".").reduce((out, part) => out == null ? void 0 : out[part], data);
+      if (value !== void 0 && value !== null && value !== "") return value;
+    }
+    return "";
+  }
+  function nodeCardHtml(data, fallback) {
+    const category = (data == null ? void 0 : data.category) || data || fallback || {};
+    const name = nodeCardValue(data, "name", "category.name") || (fallback == null ? void 0 : fallback.name) || "节点";
+    const description = stripHtml(nodeCardValue(data, "description", "description_text", "category.description", "category.description_text") || "暂无节点介绍");
+    const created = nodeCardValue(data, "created_at", "category.created_at");
+    const date = created ? new Intl.DateTimeFormat("zh-CN", { year: "numeric", month: "long", day: "numeric" }).format(new Date(created)) : "";
+    const members = nodeCardValue(data, "members_count", "member_count", "category.members_count");
+    const topics = nodeCardValue(data, "topic_count", "topics_count", "category.topic_count");
+    const posts = nodeCardValue(data, "post_count", "posts_count", "category.post_count");
+    const color = category.color || (fallback == null ? void 0 : fallback.color) || "8F959E";
+    const stat = (value, label) => value === "" ? "" : `<span><b>${escapeHtml(String(value))}</b><small>${label}</small></span>`;
+    return `<div class="im-node-hover-head"><i style="background:#${escapeHtml(color)}"></i><strong>${escapeHtml(name)}</strong></div>
+    <p>${escapeHtml(description)}</p>
+    <div class="im-node-hover-meta">${date ? `<span>♙ 创建于 ${escapeHtml(date)}</span>` : ""}<span>◎ ${category.read_restricted ? "受限" : "公开"}</span></div>
+    ${members !== "" || topics !== "" || posts !== "" ? `<div class="im-node-hover-stats">${stat(members, "成员")}${stat(topics, "主题")}${stat(posts, "帖子")}</div>` : ""}`;
+  }
+  async function showNodeCard(anchor) {
+    clearTimeout(nodeCardCloseTimer);
+    const slug = anchor.dataset.nodeSlug || nodeSlug(anchor.getAttribute("href"));
+    if (!slug) return;
+    let card = document.querySelector(".im-node-hover-card");
+    if (!card) {
+      card = document.createElement("aside");
+      card.className = "im-node-hover-card";
+      card.addEventListener("mouseenter", () => clearTimeout(nodeCardCloseTimer));
+      card.addEventListener("mouseleave", hideNodeCard);
+      document.body.appendChild(card);
+    }
+    const fallback = categoryById(Number(anchor.dataset.categoryId)) || {};
+    card.innerHTML = nodeCardCache.has(slug) ? nodeCardHtml(nodeCardCache.get(slug), fallback) : `<div class="im-node-hover-loading">正在加载节点信息…</div>`;
+    card.classList.add("is-open");
+    const rect = anchor.getBoundingClientRect();
+    card.style.left = `${Math.max(12, Math.min(window.innerWidth - 344, rect.left - 20))}px`;
+    card.style.top = `${Math.max(12, Math.min(window.innerHeight - card.offsetHeight - 12, rect.bottom + 9))}px`;
+    if (nodeCardCache.has(slug)) return;
+    try {
+      const data = await api(`/n/${encodeURIComponent(slug)}.json`);
+      nodeCardCache.set(slug, data);
+      if (card.classList.contains("is-open") && anchor.matches(":hover")) card.innerHTML = nodeCardHtml(data, fallback);
+    } catch {
+      if (card.classList.contains("is-open")) card.innerHTML = nodeCardHtml(fallback, fallback);
+    }
+  }
+  function hideNodeCard() {
+    clearTimeout(nodeCardCloseTimer);
+    nodeCardCloseTimer = setTimeout(() => {
+      var _a2;
+      return (_a2 = document.querySelector(".im-node-hover-card")) == null ? void 0 : _a2.classList.remove("is-open");
+    }, 160);
+  }
   function cloneLotteryWidget(widget) {
     var _a2;
     const clone = widget.cloneNode(true);
@@ -9909,6 +10069,13 @@ html.im-theme {
         return;
       }
       if (e.target.closest(".im-chat-compose, .im-composer-tools, .im-composer-target")) {
+        return;
+      }
+      const joinNode = e.target.closest(".im-node-membership");
+      if (joinNode && panel.contains(joinNode)) {
+        e.preventDefault();
+        e.stopPropagation();
+        joinCurrentNode(joinNode);
         return;
       }
       const chipLink = e.target.closest("a.im-chat-chip");
@@ -10646,7 +10813,20 @@ html.im-theme {
         const cat = data.category_id ? categoryById(data.category_id) : null;
         const chipsBox = document.querySelector(".im-chat-chips");
         if (chipsBox) {
-          chipsBox.innerHTML = cat ? `<a class="im-chat-chip" href="${escapeHtml(categoryHref(cat))}"><span class="im-nav2-cat-dot" style="background:#${escapeHtml(cat.color || "8F959E")}"></span>${escapeHtml(cat.name)}</a>` : "";
+          chipsBox.innerHTML = cat ? `<a class="im-chat-chip" href="${escapeHtml(categoryHref(cat))}" data-node-slug="${escapeHtml(cat.slug || "")}" data-category-id="${escapeHtml(String(cat.id || ""))}"><span class="im-nav2-cat-dot" style="background:#${escapeHtml(cat.color || "8F959E")}"></span>${escapeHtml(cat.name)}</a><button type="button" class="im-node-membership" data-node-slug="${escapeHtml(cat.slug || "")}" aria-label="正在获取节点状态…">➕</button>` : "";
+          const chip = chipsBox.querySelector(".im-chat-chip");
+          const membership = chipsBox.querySelector(".im-node-membership");
+          chip == null ? void 0 : chip.addEventListener("mouseenter", () => showNodeCard(chip));
+          chip == null ? void 0 : chip.addEventListener("mouseleave", hideNodeCard);
+          if (membership) {
+            paintNodeMembership(membership, (cat == null ? void 0 : cat.slug) || "");
+            let attempts = 0;
+            const syncMembership = setInterval(() => {
+              if (!membership.isConnected || chatState.topicId !== topicId || attempts++ >= 20) return clearInterval(syncMembership);
+              paintNodeMembership(membership, (cat == null ? void 0 : cat.slug) || "");
+              if (!membership.disabled) clearInterval(syncMembership);
+            }, 250);
+          }
         }
         if (cat && sub) sub.textContent = `归属于 ${cat.name} · ${replyTotal} 条回复`;
       });
@@ -18094,7 +18274,7 @@ ${item.label}`;
       }
       if (window.__nodelocImBootstrapped) return;
       window.__nodelocImBootstrapped = true;
-      console.info(`[nodeloc-im] v${"0.7.10"} loaded, skin=${SKIN_ID}`);
+      console.info(`[nodeloc-im] v${"0.7.11"} loaded, skin=${SKIN_ID}`);
       if (cfBlocked() || nativeNotFound()) ;
       else {
         injectStyle();
