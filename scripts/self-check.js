@@ -152,6 +152,9 @@ for (const marker of [
   "im-strip-progress",
   "会员进度",
   "function nativeProfileMenuTab(",
+  "user-menu-button-upgrade-progress",
+  "function currentNativeUserMenu(",
+  "const nativeOpen =",
   "stripFilters.splice(likedIndex + 1, 0"
 ]) {
   if (!output.includes(marker)) {

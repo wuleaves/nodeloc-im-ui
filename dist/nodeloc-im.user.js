@@ -2,7 +2,7 @@
 // @name         NodeLoc · IM 外观（钉钉 / 飞书 / 企业微信）
 // @namespace    https://www.nodeloc.com/
 // @author       czm15053, NodeLoc adaptation
-// @version      0.7.9
+// @version      0.7.10
 // @description  NodeLoc 三栏 IM 外观：节点/主题列表、帖子流、回复、搜索、用户与通知，支持三套皮肤和明暗主题。
 // @match        https://www.nodeloc.com/*
 // @noframes
@@ -13803,6 +13803,10 @@ ${item.label}`;
     if (targetTab !== "progress") {
       return menu.querySelector("#user-menu-button-profile, [data-tab-id='profile']");
     }
+    const exact = menu.querySelector(
+      "#user-menu-button-upgrade-progress, [data-tab-id='upgrade-progress'], [aria-controls='quick-access-upgrade-progress']"
+    );
+    if (exact) return exact;
     const tabs = [...menu.querySelectorAll(".tabs-list a, .tabs-list button, [role='tab']")];
     const semantic = tabs.find((tab) => {
       const hint = [tab.id, tab.dataset.tabId, tab.title, tab.getAttribute("aria-label"), tab.textContent].filter(Boolean).join(" ").toLowerCase();
@@ -13810,11 +13814,31 @@ ${item.label}`;
     });
     return semantic || tabs[5] || null;
   }
+  function currentNativeUserMenu(targetTab = "profile") {
+    return [...document.querySelectorAll(".user-menu")].reverse().find(
+      (menu) => menu.isConnected && nativeProfileMenuTab(menu, targetTab)
+    ) || null;
+  }
   function decorateDingtalkProfileMenu(menu, targetTab = "profile") {
+    if (!menu) return false;
     const requestedTab = nativeProfileMenuTab(menu, targetTab);
-    if (requestedTab && requestedTab.getAttribute("aria-selected") !== "true") requestedTab.click();
+    if (!requestedTab) return false;
+    menu.dataset.imLauncher = targetTab;
+    menu.classList.add("im-user-menu-float", DINGTALK_PROFILE_CLASS);
+    document.documentElement.classList.add("im-notif-open", "im-profile-open");
+    document.querySelectorAll(".im-rail-avatar").forEach((el) => {
+      el.classList.add("is-profile-open");
+      el.setAttribute("aria-expanded", "true");
+    });
+    document.querySelectorAll(".im-strip-account, .im-strip-progress").forEach((el) => {
+      const on = targetTab === "progress" ? el.classList.contains("im-strip-progress") : el.classList.contains("im-strip-account");
+      el.classList.toggle("is-profile-open", on);
+      el.classList.toggle("active", on);
+      el.setAttribute("aria-expanded", on ? "true" : "false");
+    });
+    if (requestedTab.getAttribute("aria-selected") !== "true") requestedTab.click();
     requestAnimationFrame(() => {
-      const activeMenu = document.querySelector(".user-menu") || menu;
+      const activeMenu = currentNativeUserMenu(targetTab) || menu;
       activeMenu.dataset.imLauncher = targetTab;
       activeMenu.classList.add("im-user-menu-float", DINGTALK_PROFILE_CLASS);
       if (activeMenu.dataset.imProfileCleanupBound !== "1") {
@@ -13838,30 +13862,32 @@ ${item.label}`;
           }, 200);
         });
       }
-      document.documentElement.classList.add("im-notif-open", "im-profile-open");
-      document.querySelectorAll(".im-rail-avatar").forEach((el) => {
-        el.classList.add("is-profile-open");
-        el.setAttribute("aria-expanded", "true");
-      });
-      document.querySelectorAll(".im-strip-account, .im-strip-progress").forEach((el) => {
-        const on = targetTab === "progress" ? el.classList.contains("im-strip-progress") : el.classList.contains("im-strip-account");
-        el.classList.toggle("is-profile-open", on);
-        el.classList.toggle("active", on);
-        el.setAttribute("aria-expanded", on ? "true" : "false");
-      });
     });
+    return true;
   }
   function waitForDingtalkProfileMenu(targetTab = "profile", attempt = 0) {
-    const menu = document.querySelector(".user-menu");
-    if (menu) return decorateDingtalkProfileMenu(menu, targetTab);
-    if (attempt < 12) setTimeout(() => waitForDingtalkProfileMenu(targetTab, attempt + 1), 40);
+    const toggle = nativeUserToggle();
+    const menu = currentNativeUserMenu(targetTab);
+    const nativeOpen = (toggle == null ? void 0 : toggle.getAttribute("aria-expanded")) === "true";
+    if (nativeOpen && menu && decorateDingtalkProfileMenu(menu, targetTab)) return;
+    if (attempt < 50) {
+      setTimeout(() => waitForDingtalkProfileMenu(targetTab, attempt + 1), 40);
+      return;
+    }
+    closeDingtalkProfileMenu({ closeNative: false });
+    console.warn(`[nodeloc-im] native user-menu did not become ready: ${targetTab}`);
   }
   function toggleDingtalkProfileMenu(targetTab = "profile") {
+    var _a2;
     if (document.documentElement.classList.contains("im-profile-open")) {
-      const menu = document.querySelector(`.user-menu.${DINGTALK_PROFILE_CLASS}`);
-      if ((menu == null ? void 0 : menu.dataset.imLauncher) !== targetTab) decorateDingtalkProfileMenu(menu, targetTab);
-      else closeDingtalkProfileMenu();
-      return;
+      const menu = currentNativeUserMenu(targetTab) || document.querySelector(`.user-menu.${DINGTALK_PROFILE_CLASS}`);
+      const nativeOpen = ((_a2 = nativeUserToggle()) == null ? void 0 : _a2.getAttribute("aria-expanded")) === "true";
+      if (menu && nativeOpen) {
+        if (menu.dataset.imLauncher !== targetTab) decorateDingtalkProfileMenu(menu, targetTab);
+        else closeDingtalkProfileMenu();
+        return;
+      }
+      closeDingtalkProfileMenu({ closeNative: false });
     }
     closeDingtalkWorkbench();
     closeDingtalkChatHub();
@@ -18068,7 +18094,7 @@ ${item.label}`;
       }
       if (window.__nodelocImBootstrapped) return;
       window.__nodelocImBootstrapped = true;
-      console.info(`[nodeloc-im] v${"0.7.9"} loaded, skin=${SKIN_ID}`);
+      console.info(`[nodeloc-im] v${"0.7.10"} loaded, skin=${SKIN_ID}`);
       if (cfBlocked() || nativeNotFound()) ;
       else {
         injectStyle();

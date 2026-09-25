@@ -522,6 +522,12 @@ function nativeProfileMenuTab(menu, targetTab) {
   if (targetTab !== "progress") {
     return menu.querySelector("#user-menu-button-profile, [data-tab-id='profile']");
   }
+  // NodeLoc 当前原生菜单的稳定标识；优先精确命中，避免图标标签无文本时语义匹配失效。
+  const exact = menu.querySelector(
+    "#user-menu-button-upgrade-progress, [data-tab-id='upgrade-progress'], " +
+    "[aria-controls='quick-access-upgrade-progress']"
+  );
+  if (exact) return exact;
   const tabs = [...menu.querySelectorAll(".tabs-list a, .tabs-list button, [role='tab']")];
   const semantic = tabs.find((tab) => {
     const hint = [tab.id, tab.dataset.tabId, tab.title, tab.getAttribute("aria-label"), tab.textContent]
@@ -532,11 +538,35 @@ function nativeProfileMenuTab(menu, targetTab) {
   return semantic || tabs[5] || null;
 }
 
+function currentNativeUserMenu(targetTab = "profile") {
+  return [...document.querySelectorAll(".user-menu")].reverse().find((menu) =>
+    menu.isConnected && nativeProfileMenuTab(menu, targetTab)
+  ) || null;
+}
+
 function decorateDingtalkProfileMenu(menu, targetTab = "profile") {
+  if (!menu) return false;
   const requestedTab = nativeProfileMenuTab(menu, targetTab);
-  if (requestedTab && requestedTab.getAttribute("aria-selected") !== "true") requestedTab.click();
+  if (!requestedTab) return false;
+  menu.dataset.imLauncher = targetTab;
+  menu.classList.add("im-user-menu-float", DINGTALK_PROFILE_CLASS);
+  document.documentElement.classList.add("im-notif-open", "im-profile-open");
+  document.querySelectorAll(".im-rail-avatar").forEach((el) => {
+    el.classList.add("is-profile-open");
+    el.setAttribute("aria-expanded", "true");
+  });
+  document.querySelectorAll(".im-strip-account, .im-strip-progress").forEach((el) => {
+    const on = targetTab === "progress"
+      ? el.classList.contains("im-strip-progress")
+      : el.classList.contains("im-strip-account");
+    el.classList.toggle("is-profile-open", on);
+    el.classList.toggle("active", on);
+    el.setAttribute("aria-expanded", on ? "true" : "false");
+  });
+  if (requestedTab.getAttribute("aria-selected") !== "true") requestedTab.click();
   requestAnimationFrame(() => {
-    const activeMenu = document.querySelector(".user-menu") || menu;
+    // 点击原生 tab 后 Ember 可能替换整棵 user-menu；始终装饰最新且含目标 tab 的节点。
+    const activeMenu = currentNativeUserMenu(targetTab) || menu;
     activeMenu.dataset.imLauncher = targetTab;
     activeMenu.classList.add("im-user-menu-float", DINGTALK_PROFILE_CLASS);
     if (activeMenu.dataset.imProfileCleanupBound !== "1") {
@@ -561,34 +591,35 @@ function decorateDingtalkProfileMenu(menu, targetTab = "profile") {
         }, 200);
       });
     }
-    document.documentElement.classList.add("im-notif-open", "im-profile-open");
-    document.querySelectorAll(".im-rail-avatar").forEach((el) => {
-      el.classList.add("is-profile-open");
-      el.setAttribute("aria-expanded", "true");
-    });
-    document.querySelectorAll(".im-strip-account, .im-strip-progress").forEach((el) => {
-      const on = targetTab === "progress"
-        ? el.classList.contains("im-strip-progress")
-        : el.classList.contains("im-strip-account");
-      el.classList.toggle("is-profile-open", on);
-      el.classList.toggle("active", on);
-      el.setAttribute("aria-expanded", on ? "true" : "false");
-    });
   });
+  return true;
 }
 
 function waitForDingtalkProfileMenu(targetTab = "profile", attempt = 0) {
-  const menu = document.querySelector(".user-menu");
-  if (menu) return decorateDingtalkProfileMenu(menu, targetTab);
-  if (attempt < 12) setTimeout(() => waitForDingtalkProfileMenu(targetTab, attempt + 1), 40);
+  const toggle = nativeUserToggle();
+  const menu = currentNativeUserMenu(targetTab);
+  const nativeOpen = toggle?.getAttribute("aria-expanded") === "true";
+  if (nativeOpen && menu && decorateDingtalkProfileMenu(menu, targetTab)) return;
+  // 原生菜单和升级面板均为异步渲染；慢网下最多等待 2 秒。
+  if (attempt < 50) {
+    setTimeout(() => waitForDingtalkProfileMenu(targetTab, attempt + 1), 40);
+    return;
+  }
+  closeDingtalkProfileMenu({ closeNative: false });
+  console.warn(`[nodeloc-im] native user-menu did not become ready: ${targetTab}`);
 }
 
 export function toggleDingtalkProfileMenu(targetTab = "profile") {
   if (document.documentElement.classList.contains("im-profile-open")) {
-    const menu = document.querySelector(`.user-menu.${DINGTALK_PROFILE_CLASS}`);
-    if (menu?.dataset.imLauncher !== targetTab) decorateDingtalkProfileMenu(menu, targetTab);
-    else closeDingtalkProfileMenu();
-    return;
+    const menu = currentNativeUserMenu(targetTab) || document.querySelector(`.user-menu.${DINGTALK_PROFILE_CLASS}`);
+    const nativeOpen = nativeUserToggle()?.getAttribute("aria-expanded") === "true";
+    if (menu && nativeOpen) {
+      if (menu.dataset.imLauncher !== targetTab) decorateDingtalkProfileMenu(menu, targetTab);
+      else closeDingtalkProfileMenu();
+      return;
+    }
+    // 原生菜单被站点自行销毁/关闭后，清掉残留皮肤状态并继续执行下面的重新打开流程。
+    closeDingtalkProfileMenu({ closeNative: false });
   }
   closeDingtalkWorkbench();
   closeDingtalkChatHub();
