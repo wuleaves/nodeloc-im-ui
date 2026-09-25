@@ -1283,8 +1283,30 @@ function openTopicComposerViaKeyboard() {
     return false;
   }
 }
+
+let topicComposerOpening = false;
+
+function waitForComposerOpen(timeoutMs = 600) {
+  return new Promise((resolve) => {
+    const deadline = Date.now() + timeoutMs;
+    const check = () => {
+      if (isComposerOpen()) {
+        resolve(true);
+        return;
+      }
+      if (Date.now() >= deadline) {
+        resolve(false);
+        return;
+      }
+      setTimeout(check, 30);
+    };
+    check();
+  });
+}
+
 /** 中栏「发帖」入口：打开发帖编辑器，发布后 SPA 路由到新话题 */
-export function openNewTopicComposer() {
+export async function openNewTopicComposer() {
+  if (topicComposerOpening) return false;
   try {
     if (!getCurrentUsername()) {
       setComposeStatus("登录后才能发帖", "error");
@@ -1294,27 +1316,35 @@ export function openNewTopicComposer() {
       document.querySelector("#reply-control.open textarea, #reply-control.open .ProseMirror")?.focus?.();
       return true;
     }
-    let opened = false;
-    try { opened = !!openTopicComposerViaService(); } catch { /* fall through */ }
+    topicComposerOpening = true;
+    setComposeStatus("正在打开发帖编辑器…", "busy");
+    let requested = false;
+    try { requested = !!openTopicComposerViaService(); } catch { /* fall through */ }
+    let opened = requested && await waitForComposerOpen();
     if (!opened) {
-      try { opened = !!clickNativeCreateTopicButton(); } catch { /* fall through */ }
+      let clicked = false;
+      try { clicked = !!clickNativeCreateTopicButton(); } catch { /* fall through */ }
+      opened = clicked && await waitForComposerOpen();
     }
-    if (!opened) openTopicComposerViaKeyboard();
-    setTimeout(() => {
-      if (isComposerOpen()) {
-        setComposeStatus("编辑器已打开", "busy");
-      } else {
-        setComposeStatus("打开发帖编辑器失败：请切右上角「原生视图」发帖", "error");
-        console.warn("[nodeloc-im] openNewTopicComposer failed", {
-          hasOwner: !!getEmberOwner(),
-          hasComposer: !!getComposerService(getEmberOwner())
-        });
-      }
-    }, 350);
-    return true;
+    if (!opened) {
+      openTopicComposerViaKeyboard();
+      opened = await waitForComposerOpen(800);
+    }
+    if (opened) {
+      setComposeStatus("编辑器已打开", "busy");
+      return true;
+    }
+    setComposeStatus("打开发帖编辑器失败：请切右上角「原生视图」发帖", "error");
+    console.warn("[nodeloc-im] openNewTopicComposer failed", {
+      hasOwner: !!getEmberOwner(),
+      hasComposer: !!getComposerService(getEmberOwner())
+    });
+    return false;
   } catch (err) {
     console.warn("[nodeloc-im] openNewTopicComposer crashed", err);
     setComposeStatus(`打开发帖编辑器失败：${err && err.message ? err.message : "未知错误"}`, "error");
     return false;
+  } finally {
+    topicComposerOpening = false;
   }
 }

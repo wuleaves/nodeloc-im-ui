@@ -29,17 +29,25 @@ const EMBED_PROPS = [
   "left", "right", "top", "bottom", "width", "min-width", "height", "min-height", "max-height",
   "transform", "translate", "transition"
 ];
+const embedStyleObservers = new WeakMap();
+
 function syncEmbedGeometry(active) {
   const rc = document.querySelector("#reply-control");
   if (!rc) return;
   // style 盯防：Glimmer 会自行改写 #reply-control 的行内 style（--composer-fields-height 等），
   // 全屏切换触发重渲染时可能把我们钉进去的几何一起抹掉 —— style 一变且几何偏离目标就重钉；
   // 就位时零写入返回，观察者回路到此终止
-  if (!rc.dataset.styleWatch) {
-    rc.dataset.styleWatch = "1";
-    new MutationObserver(() => reSyncEmbedGeometry()).observe(rc, { attributes: true, attributeFilter: ["style"] });
+  let styleObserver = embedStyleObservers.get(rc);
+  if (!styleObserver) {
+    styleObserver = new MutationObserver(() => reSyncEmbedGeometry());
+    embedStyleObservers.set(rc, styleObserver);
+    styleObserver.observe(rc, { attributes: true, attributeFilter: ["style"] });
   }
-  const clear = () => { for (const p of EMBED_PROPS) rc.style.removeProperty(p); };
+  const clear = () => {
+    styleObserver.disconnect();
+    for (const p of EMBED_PROPS) rc.style.removeProperty(p);
+    styleObserver.observe(rc, { attributes: true, attributeFilter: ["style"] });
+  };
   if (!active) {
     clear();
     return;
@@ -68,24 +76,30 @@ function syncEmbedGeometry(active) {
   ) {
     return;
   }
-  // 关过渡后同步测量，避免 transition 插值污染读数；嵌入卡片无需滑入动画
-  rc.style.setProperty("transition", "none", "important");
-  rc.style.setProperty("transform", "none", "important");
-  rc.style.setProperty("translate", "none", "important");
-  rc.style.setProperty("right", "auto", "important");
-  rc.style.setProperty("top", full ? "0px" : "auto", "important");
-  // 打零测出包含块原点在视口中的实际位置（顺带吸收祖先 margin），再按目标值反解
-  rc.style.setProperty("left", "0px", "important");
-  rc.style.setProperty("bottom", "0px", "important");
-  const origin = rc.getBoundingClientRect();
-  rc.style.setProperty("left", `${leftT - origin.left}px`, "important");
-  if (full) {
-    rc.style.setProperty("bottom", `${origin.bottom - innerHeight}px`, "important");
-    rc.style.setProperty("max-height", "none", "important");
-    rc.style.setProperty("width", `${Math.max(320, innerWidth - panels)}px`, "important");
-  } else {
-    rc.style.setProperty("bottom", `${origin.bottom - (innerHeight - 12)}px`, "important");
-    rc.style.setProperty("width", `${Math.max(320, innerWidth - gap - leftT)}px`, "important");
+  styleObserver.disconnect();
+  let origin;
+  try {
+    // 关过渡后同步测量，避免 transition 插值污染读数；嵌入卡片无需滑入动画
+    rc.style.setProperty("transition", "none", "important");
+    rc.style.setProperty("transform", "none", "important");
+    rc.style.setProperty("translate", "none", "important");
+    rc.style.setProperty("right", "auto", "important");
+    rc.style.setProperty("top", full ? "0px" : "auto", "important");
+    // 打零测出包含块原点在视口中的实际位置（顺带吸收祖先 margin），再按目标值反解
+    rc.style.setProperty("left", "0px", "important");
+    rc.style.setProperty("bottom", "0px", "important");
+    origin = rc.getBoundingClientRect();
+    rc.style.setProperty("left", `${leftT - origin.left}px`, "important");
+    if (full) {
+      rc.style.setProperty("bottom", `${origin.bottom - innerHeight}px`, "important");
+      rc.style.setProperty("max-height", "none", "important");
+      rc.style.setProperty("width", `${Math.max(320, innerWidth - panels)}px`, "important");
+    } else {
+      rc.style.setProperty("bottom", `${origin.bottom - (innerHeight - 12)}px`, "important");
+      rc.style.setProperty("width", `${Math.max(320, innerWidth - gap - leftT)}px`, "important");
+    }
+  } finally {
+    styleObserver.observe(rc, { attributes: true, attributeFilter: ["style"] });
   }
   // 包含块真被劫持时打一次诊断点（指向具体祖先和属性），方便日后定点根治
   if (Math.abs(origin.left) > 1 || Math.abs(origin.bottom - innerHeight) > 2) {
@@ -207,7 +221,17 @@ export function initComposerEmbed() {
       setTimeout(syncNativeModalHosts, 260);
     }
   });
-  new MutationObserver(syncNativeModalHosts).observe(document.body, { childList: true, subtree: true });
+  const modalSelector = ".d-modal, .modal[role='dialog'], dialog[open], [role='dialog'].d-modal__container";
+  new MutationObserver((mutations) => {
+    const modalChanged = mutations.some((mutation) => {
+      for (const node of [...mutation.addedNodes, ...mutation.removedNodes]) {
+        if (!(node instanceof Element)) continue;
+        if (node.matches(modalSelector) || node.querySelector(modalSelector)) return true;
+      }
+      return false;
+    });
+    if (modalChanged) syncNativeModalHosts();
+  }).observe(document.body, { childList: true, subtree: true });
   document.addEventListener("click", (event) => {
     if (isComposerCloseControl(event.target)) {
       // 捕获阶段不阻止原生事件，只把美化层的视觉关闭改成本地即时完成。

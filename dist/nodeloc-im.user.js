@@ -2,7 +2,7 @@
 // @name         NodeLoc · IM 外观（钉钉 / 飞书 / 企业微信）
 // @namespace    https://www.nodeloc.com/
 // @author       czm15053, NodeLoc adaptation
-// @version      0.7.8
+// @version      0.7.9
 // @description  NodeLoc 三栏 IM 外观：节点/主题列表、帖子流、回复、搜索、用户与通知，支持三套皮肤和明暗主题。
 // @match        https://www.nodeloc.com/*
 // @noframes
@@ -7657,12 +7657,21 @@ html.im-theme {
   }
   let faviconObserver = null;
   let faviconApplying = false;
+  function faviconMimeType(href) {
+    var _a2;
+    const dataType = (_a2 = String(href || "").match(/^data:(image\/[a-z0-9.+-]+)/i)) == null ? void 0 : _a2[1];
+    if (dataType) return dataType;
+    if (/\.svg(?:[?#]|$)/i.test(href)) return "image/svg+xml";
+    if (/\.png(?:[?#]|$)/i.test(href)) return "image/png";
+    return "image/x-icon";
+  }
   function makeFavicon() {
     const head = document.head;
     if (!head || faviconApplying) return;
     faviconApplying = true;
     try {
       const href = FAVICON_URI;
+      const mimeType = faviconMimeType(href);
       const icons = head.querySelectorAll(
         "link[rel='icon'], link[rel='shortcut icon'], link[rel~='icon'], link[rel='apple-touch-icon'], link[rel='apple-touch-icon-precomposed'], link[rel='mask-icon']"
       );
@@ -7670,7 +7679,7 @@ html.im-theme {
         if (icon.id && icon.id !== FAVICON_ID) icon.removeAttribute("id");
         if (icon.getAttribute("href") !== href) icon.setAttribute("href", href);
         if (icon.rel === "mask-icon") continue;
-        if (icon.getAttribute("type") !== "image/x-icon") icon.setAttribute("type", "image/x-icon");
+        if (icon.getAttribute("type") !== mimeType) icon.setAttribute("type", mimeType);
         if (!icon.getAttribute("sizes")) icon.setAttribute("sizes", "any");
       }
       let link = document.getElementById(FAVICON_ID);
@@ -7678,23 +7687,29 @@ html.im-theme {
         link = document.createElement("link");
         link.id = FAVICON_ID;
         link.rel = "icon";
-        link.type = "image/x-icon";
+        link.type = mimeType;
         link.sizes = "any";
         link.setAttribute("href", href);
         head.appendChild(link);
       } else if (link.getAttribute("href") !== href) {
         link.setAttribute("href", href);
+        link.setAttribute("type", mimeType);
+      } else if (link.getAttribute("type") !== mimeType) {
+        link.setAttribute("type", mimeType);
       }
       let shortcut = head.querySelector("link[data-im-shortcut='1']");
       if (!shortcut) {
         shortcut = document.createElement("link");
         shortcut.rel = "shortcut icon";
-        shortcut.type = "image/x-icon";
+        shortcut.type = mimeType;
         shortcut.dataset.imShortcut = "1";
         shortcut.setAttribute("href", href);
         head.insertBefore(shortcut, head.firstChild);
       } else if (shortcut.getAttribute("href") !== href) {
         shortcut.setAttribute("href", href);
+        shortcut.setAttribute("type", mimeType);
+      } else if (shortcut.getAttribute("type") !== mimeType) {
+        shortcut.setAttribute("type", mimeType);
       }
       if (!faviconObserver) {
         faviconObserver = new MutationObserver(() => {
@@ -12067,8 +12082,27 @@ ${data.raw}
       return false;
     }
   }
-  function openNewTopicComposer() {
+  let topicComposerOpening = false;
+  function waitForComposerOpen(timeoutMs = 600) {
+    return new Promise((resolve) => {
+      const deadline = Date.now() + timeoutMs;
+      const check = () => {
+        if (isComposerOpen()) {
+          resolve(true);
+          return;
+        }
+        if (Date.now() >= deadline) {
+          resolve(false);
+          return;
+        }
+        setTimeout(check, 30);
+      };
+      check();
+    });
+  }
+  async function openNewTopicComposer() {
     var _a2, _b2;
+    if (topicComposerOpening) return false;
     try {
       if (!getCurrentUsername()) {
         setComposeStatus("登录后才能发帖", "error");
@@ -12078,34 +12112,42 @@ ${data.raw}
         (_b2 = (_a2 = document.querySelector("#reply-control.open textarea, #reply-control.open .ProseMirror")) == null ? void 0 : _a2.focus) == null ? void 0 : _b2.call(_a2);
         return true;
       }
-      let opened = false;
+      topicComposerOpening = true;
+      setComposeStatus("正在打开发帖编辑器…", "busy");
+      let requested = false;
       try {
-        opened = !!openTopicComposerViaService();
+        requested = !!openTopicComposerViaService();
       } catch {
       }
+      let opened = requested && await waitForComposerOpen();
       if (!opened) {
+        let clicked = false;
         try {
-          opened = !!clickNativeCreateTopicButton();
+          clicked = !!clickNativeCreateTopicButton();
         } catch {
         }
+        opened = clicked && await waitForComposerOpen();
       }
-      if (!opened) openTopicComposerViaKeyboard();
-      setTimeout(() => {
-        if (isComposerOpen()) {
-          setComposeStatus("编辑器已打开", "busy");
-        } else {
-          setComposeStatus("打开发帖编辑器失败：请切右上角「原生视图」发帖", "error");
-          console.warn("[nodeloc-im] openNewTopicComposer failed", {
-            hasOwner: !!getEmberOwner(),
-            hasComposer: !!getComposerService(getEmberOwner())
-          });
-        }
-      }, 350);
-      return true;
+      if (!opened) {
+        openTopicComposerViaKeyboard();
+        opened = await waitForComposerOpen(800);
+      }
+      if (opened) {
+        setComposeStatus("编辑器已打开", "busy");
+        return true;
+      }
+      setComposeStatus("打开发帖编辑器失败：请切右上角「原生视图」发帖", "error");
+      console.warn("[nodeloc-im] openNewTopicComposer failed", {
+        hasOwner: !!getEmberOwner(),
+        hasComposer: !!getComposerService(getEmberOwner())
+      });
+      return false;
     } catch (err) {
       console.warn("[nodeloc-im] openNewTopicComposer crashed", err);
       setComposeStatus(`打开发帖编辑器失败：${err && err.message ? err.message : "未知错误"}`, "error");
       return false;
+    } finally {
+      topicComposerOpening = false;
     }
   }
   function getRailWidth() {
@@ -15788,15 +15830,20 @@ ${item.label}`;
     "translate",
     "transition"
   ];
+  const embedStyleObservers = /* @__PURE__ */ new WeakMap();
   function syncEmbedGeometry(active) {
     const rc = document.querySelector("#reply-control");
     if (!rc) return;
-    if (!rc.dataset.styleWatch) {
-      rc.dataset.styleWatch = "1";
-      new MutationObserver(() => reSyncEmbedGeometry()).observe(rc, { attributes: true, attributeFilter: ["style"] });
+    let styleObserver = embedStyleObservers.get(rc);
+    if (!styleObserver) {
+      styleObserver = new MutationObserver(() => reSyncEmbedGeometry());
+      embedStyleObservers.set(rc, styleObserver);
+      styleObserver.observe(rc, { attributes: true, attributeFilter: ["style"] });
     }
     const clear = () => {
+      styleObserver.disconnect();
       for (const p of EMBED_PROPS) rc.style.removeProperty(p);
+      styleObserver.observe(rc, { attributes: true, attributeFilter: ["style"] });
     };
     if (!active) {
       clear();
@@ -15816,22 +15863,28 @@ ${item.label}`;
     if (rc.style.getPropertyValue("left") && Math.abs(r0.left - leftT) <= 2 && Math.abs(r0.right - (innerWidth - (full ? 0 : gap))) <= 2 && (full ? Math.abs(r0.top) <= 2 && Math.abs(r0.bottom - innerHeight) <= 2 : Math.abs(r0.bottom - (innerHeight - 12)) <= 2)) {
       return;
     }
-    rc.style.setProperty("transition", "none", "important");
-    rc.style.setProperty("transform", "none", "important");
-    rc.style.setProperty("translate", "none", "important");
-    rc.style.setProperty("right", "auto", "important");
-    rc.style.setProperty("top", full ? "0px" : "auto", "important");
-    rc.style.setProperty("left", "0px", "important");
-    rc.style.setProperty("bottom", "0px", "important");
-    const origin = rc.getBoundingClientRect();
-    rc.style.setProperty("left", `${leftT - origin.left}px`, "important");
-    if (full) {
-      rc.style.setProperty("bottom", `${origin.bottom - innerHeight}px`, "important");
-      rc.style.setProperty("max-height", "none", "important");
-      rc.style.setProperty("width", `${Math.max(320, innerWidth - panels)}px`, "important");
-    } else {
-      rc.style.setProperty("bottom", `${origin.bottom - (innerHeight - 12)}px`, "important");
-      rc.style.setProperty("width", `${Math.max(320, innerWidth - gap - leftT)}px`, "important");
+    styleObserver.disconnect();
+    let origin;
+    try {
+      rc.style.setProperty("transition", "none", "important");
+      rc.style.setProperty("transform", "none", "important");
+      rc.style.setProperty("translate", "none", "important");
+      rc.style.setProperty("right", "auto", "important");
+      rc.style.setProperty("top", full ? "0px" : "auto", "important");
+      rc.style.setProperty("left", "0px", "important");
+      rc.style.setProperty("bottom", "0px", "important");
+      origin = rc.getBoundingClientRect();
+      rc.style.setProperty("left", `${leftT - origin.left}px`, "important");
+      if (full) {
+        rc.style.setProperty("bottom", `${origin.bottom - innerHeight}px`, "important");
+        rc.style.setProperty("max-height", "none", "important");
+        rc.style.setProperty("width", `${Math.max(320, innerWidth - panels)}px`, "important");
+      } else {
+        rc.style.setProperty("bottom", `${origin.bottom - (innerHeight - 12)}px`, "important");
+        rc.style.setProperty("width", `${Math.max(320, innerWidth - gap - leftT)}px`, "important");
+      }
+    } finally {
+      styleObserver.observe(rc, { attributes: true, attributeFilter: ["style"] });
     }
     if (Math.abs(origin.left) > 1 || Math.abs(origin.bottom - innerHeight) > 2) {
       let n = rc.parentElement;
@@ -15936,7 +15989,17 @@ ${item.label}`;
         setTimeout(syncNativeModalHosts, 260);
       }
     });
-    new MutationObserver(syncNativeModalHosts).observe(document.body, { childList: true, subtree: true });
+    const modalSelector = ".d-modal, .modal[role='dialog'], dialog[open], [role='dialog'].d-modal__container";
+    new MutationObserver((mutations) => {
+      const modalChanged = mutations.some((mutation) => {
+        for (const node of [...mutation.addedNodes, ...mutation.removedNodes]) {
+          if (!(node instanceof Element)) continue;
+          if (node.matches(modalSelector) || node.querySelector(modalSelector)) return true;
+        }
+        return false;
+      });
+      if (modalChanged) syncNativeModalHosts();
+    }).observe(document.body, { childList: true, subtree: true });
     document.addEventListener("click", (event) => {
       if (isComposerCloseControl(event.target)) {
         requestAnimationFrame(releaseComposerUiImmediately);
@@ -18005,7 +18068,7 @@ ${item.label}`;
       }
       if (window.__nodelocImBootstrapped) return;
       window.__nodelocImBootstrapped = true;
-      console.info(`[nodeloc-im] v${"0.7.8"} loaded, skin=${SKIN_ID}`);
+      console.info(`[nodeloc-im] v${"0.7.9"} loaded, skin=${SKIN_ID}`);
       if (cfBlocked() || nativeNotFound()) ;
       else {
         injectStyle();

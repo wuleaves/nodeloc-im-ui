@@ -167,6 +167,19 @@ for (const marker of ["im-native-view-toggle", "切换回 NodeLoc 原生界面",
   }
 }
 
+for (const marker of [
+  "function waitForComposerOpen(",
+  "topicComposerOpening",
+  "function faviconMimeType(",
+  "embedStyleObservers =",
+  "const modalChanged = mutations.some("
+]) {
+  if (!output.includes(marker)) {
+    console.error(`missing v0.6.14 robustness marker: ${marker}`);
+    ok = false;
+  }
+}
+
 if (ok) {
   console.log("self-check passed");
   process.exit(0);
